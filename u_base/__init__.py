@@ -3,8 +3,8 @@
 
 from . import u_platform
 from . import u_exception
-from . import u_log
+from . import log
 
 __all__ = [
-    'u_platform', 'u_exception', 'u_log'
+    'u_platform', 'u_exception', 'log'
 ]
