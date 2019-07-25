@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import json
 import os
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivAPI
 
-_USERNAME = "youyouzh"
-_PASSWORD = "qw3258324298"
+CONFIG = json.load(open('config.json'))
+_USERNAME = CONFIG.get('username')
+_PASSWORD = CONFIG.get('password')
+_TEST_WRITE = False
 
 _REQUESTS_KWARGS = {
   # 'proxies': {

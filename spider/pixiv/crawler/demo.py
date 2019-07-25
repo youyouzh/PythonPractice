@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import json
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivAPI
 
-## change _USERNAME,_PASSWORD first!
-_USERNAME = "1406558940@qq.com"
-_PASSWORD = "qw3258324298"
+CONFIG = json.load(open('config.json'))
+_USERNAME = CONFIG.get('username')
+_PASSWORD = CONFIG.get('password')
 _TEST_WRITE = False
 
 ## If a special network environment is meet, please configure requests as you need.

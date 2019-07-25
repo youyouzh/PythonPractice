@@ -223,8 +223,8 @@ class AppPixivAPI(BasePixivAPI):
             params['date'] = date
         if offset:
             params['offset'] = offset
-        r = self.no_auth_requests_call('GET', url, params=params, req_auth=req_auth)
-        return self.parse_result(r)
+        response = self.no_auth_requests_call('GET', url, params=params, req_auth=req_auth)
+        return self.parse_result(response)
 
     # 趋势标签 (Search - tags)
     def trending_tags_illust(self, filter='for_ios', req_auth=True):
