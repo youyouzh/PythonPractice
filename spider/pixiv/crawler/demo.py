@@ -18,8 +18,7 @@ _REQUESTS_KWARGS = {
 }
 
 
-## AppAPI start
-
+# AppAPI start
 def appapi_illust(aapi):
     json_result = aapi.illust_detail(59580629)
     print(json_result)
@@ -162,8 +161,7 @@ def appapi_auth_api(aapi):
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
 
-## PAPI start
-
+# PAPI start
 def migrate_rev2_to_papi(api):
     print(">>> new ranking_all(mode='daily', page=1, per_page=50)")
     # rank_list = api.sapi.ranking("all", 'day', 1)
@@ -316,19 +314,18 @@ def old_main():
     papi_others(api)
 
 
+def to_json_str(response):
+    return json.dumps(response, ensure_ascii=False, indent=4)
+
+
 def main():
     # app-api
-    aapi = AppPixivAPI(**_REQUESTS_KWARGS)
-
-    aapi.login(_USERNAME, _PASSWORD)
-
-    appapi_illust(aapi)
-    appapi_recommend(aapi)
-    appapi_users(aapi)
-    appapi_search(aapi)
-    appapi_ranking(aapi)
-
-    appapi_auth_api(aapi)
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
+    pixiv_api.login(_USERNAME, _PASSWORD)
+    # response = pixiv_api.user_detail(14674239)
+    # response = pixiv_api.illust_detail(61446920)
+    response = pixiv_api.illust_ranking('day')
+    print(to_json_str(response))
 
 
 if __name__ == '__main__':
