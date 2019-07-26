@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import sqlalchemy as sql
 
-engine = sql.create_engine('mysql+pymysql://uusama:uusama@localhost:3306/pixiv?charset=utf8')
+engine = sql.create_engine('mysql+pymysql://uusama:uusama@localhost:3306/pixiv?charset=utf8mb4')
 EntityBase = sql.ext.declarative.declarative_base()
 session = sql.orm.sessionmaker(bind=engine)()
 
