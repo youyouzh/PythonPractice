@@ -3,6 +3,7 @@
 import json
 import os
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivAPI
+from spider.pixiv.mysql.db import save_illustration
 
 CONFIG = json.load(open('config.json'))
 _USERNAME = CONFIG.get('username')
@@ -88,4 +89,7 @@ def rank_of_day():
 
 if __name__ == '__main__':
     pixiv_api.login(_USERNAME, _PASSWORD)
-    rank_of_day()
+    illusts = pixiv_api.illust_ranking('day_male')
+    for illust in illusts.get('illusts'):
+        save_illustration(illust)
+
