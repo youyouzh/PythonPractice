@@ -1,11 +1,8 @@
 # -*- coding:utf-8 -*-
 
-import os
 import sys
 import re
-import shutil
-import json
-import requests
+from urllib.parse import urlparse, unquote
 
 from .api import BasePixivAPI
 from .utils import PixivError, JsonDict
@@ -53,17 +50,12 @@ class AppPixivAPI(BasePixivAPI):
             return 'false'
 
     # 返回翻页用参数
-    def parse_qs(self, next_url):
+    @staticmethod
+    def parse_next_url_options(next_url):
         if not next_url:
             return None
-        if sys.version_info >= (3, 0):
-            from urllib.parse import urlparse, unquote
-            safe_unquote = lambda s: unquote(s)
-        else:
-            from urlparse import urlparse, unquote
-            safe_unquote = lambda s: unquote(s.encode('utf8')).decode('utf8')
-
-        result_qs = {}
+        safe_unquote = lambda s: unquote(s)
+        next_url_options = {}
         query = urlparse(next_url).query
         for kv in query.split('&'):
             # split than unquote() to k,v strings
@@ -73,13 +65,13 @@ class AppPixivAPI(BasePixivAPI):
             matched = re.match('(?P<key>[\w]*)\[(?P<idx>[\w]*)\]', k)
             if matched:
                 mk = matched.group('key')
-                marray = result_qs.get(mk, [])
+                marray = next_url_options.get(mk, [])
                 # keep the origin sequence, just ignore group('idx')
-                result_qs[mk] = marray + [v]
+                next_url_options[mk] = marray + [v]
             else:
-                result_qs[k] = v
+                next_url_options[k] = v
 
-        return result_qs
+        return next_url_options
 
     # 用户详情
     def user_detail(self, user_id, filter='for_ios', req_auth=True):
