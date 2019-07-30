@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import datetime
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivAPI
 from spider.pixiv.mysql.db import save_illustration
 
@@ -88,8 +89,42 @@ def rank_of_day():
 
 
 if __name__ == '__main__':
+    MAX_PAGE_COUNT = 50
+    # 将爬取的时间和偏移持久化，下次可以接着爬
+    date_offset_file = 'offset.json'
+    date_offset_info = json.load(open(date_offset_file))
+
     pixiv_api.login(_USERNAME, _PASSWORD)
-    illusts = pixiv_api.illust_ranking('day_male')
-    for illust in illusts.get('illusts'):
-        save_illustration(illust)
+    query_date = datetime.datetime.strptime(date_offset_info.get('date'), '%Y-%m-%d').date()
+    now = datetime.date.today()
+    total_query_count = 0
+    print('------------begin-------------')
+    while query_date < now:
+        print('query date: %s, offset: %s' % (str(query_date), str(date_offset_info.get('offset'))))
+        page_index = 0
+        next_url_options = {
+            'mode': 'day',
+            'date': query_date,
+            'offset': date_offset_info.get('offset')
+        }
+        while page_index < MAX_PAGE_COUNT:
+            print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
+            illusts = pixiv_api.illust_ranking(**next_url_options)
+            if not illusts.get('illusts'):
+                print('illust is empty.')
+                break
+            next_url_options = pixiv_api.parse_next_url_options(illusts.get('next_url'))
+            total_query_count += 1
+            page_index += 1
+            print('next url: ' + illusts.get('next_url'))
+            print("----> illust size: ", len(illusts.get('illusts')))
+            for illust in illusts.get('illusts'):
+                save_illustration(illust)
+            date_offset_info['date'] = str(query_date)
+            date_offset_info['offset'] = next_url_options['offset']
+            json.dump(date_offset_info, open(date_offset_file, 'w'), ensure_ascii=False, indent=4)
+        query_date = query_date + datetime.timedelta(days=1)
+        date_offset_info['offset'] = 0
+    print('-------------end-----------')
+
 
