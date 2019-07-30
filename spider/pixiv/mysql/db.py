@@ -56,9 +56,10 @@ def save_illustration(illust: dict):
     illust_tags = []
     if 'tags' in illust and len(illust.get('tags')):
         for tag in illust.get('tags'):
-            illust_tags.append(IllustrationTag(user_id=user_info.get('id'), illust_id=illust.get('id'),
-                                               name=tag.get('name'), translated_name=tag.get('translated_name')))
-    IllustrationTag.insert().prefix_with("IGNORE").execute(illust_tags)
+            illust_tag_info = {'user_id': user_info.get('id'), 'illust_id': illust.get('id'),
+                               'name': tag.get('name'), 'translated_name': tag.get('translated_name', '')}
+            illust_tag = session.execute(IllustrationTag.__table__.insert().prefix_with('IGNORE'), illust_tag_info)
+            illust_tags.append(illust_tag)
     session.merge(illustration)
     session.merge(pixiv_user)
     session.commit()
