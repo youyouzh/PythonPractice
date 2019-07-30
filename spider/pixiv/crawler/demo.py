@@ -41,7 +41,7 @@ def appapi_recommend(aapi):
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
-    next_qs = aapi.parse_qs(json_result.next_url)
+    next_qs = aapi.parse_next_url_options(json_result.next_url)
     json_result = aapi.illust_recommended(**next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
@@ -53,7 +53,7 @@ def appapi_recommend(aapi):
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
-    next_qs = aapi.parse_qs(json_result.next_url)
+    next_qs = aapi.parse_next_url_options(json_result.next_url)
     json_result = aapi.illust_related(**next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
@@ -72,7 +72,7 @@ def appapi_users(aapi):
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
-    next_qs = aapi.parse_qs(json_result.next_url)
+    next_qs = aapi.parse_next_url_options(json_result.next_url)
     json_result = aapi.user_illusts(**next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
@@ -88,7 +88,7 @@ def appapi_users(aapi):
     user_preview = json_result.user_previews[0]
     print(">>> %s(@%s)" % (user_preview.user.name, user_preview.user.account))
 
-    next_qs = aapi.parse_qs(json_result.next_url)
+    next_qs = aapi.parse_next_url_options(json_result.next_url)
     json_result = aapi.user_following(**next_qs)
     # print(json_result)
     user_preview = json_result.user_previews[0]
@@ -115,7 +115,7 @@ def appapi_search(aapi):
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
-    next_qs = aapi.parse_qs(json_result.next_url)
+    next_qs = aapi.parse_next_url_options(json_result.next_url)
     json_result = aapi.search_illust(**next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
@@ -129,7 +129,7 @@ def appapi_ranking(aapi):
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
-    next_qs = aapi.parse_qs(json_result.next_url)
+    next_qs = aapi.parse_next_url_options(json_result.next_url)
     json_result = aapi.illust_ranking(**next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
@@ -149,7 +149,7 @@ def appapi_auth_api(aapi):
     print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
     # get next page
-    next_qs = aapi.parse_qs(json_result.next_url)
+    next_qs = aapi.parse_next_url_options(json_result.next_url)
     json_result = aapi.illust_follow(req_auth=True, **next_qs)
     # print(json_result)
     illust = json_result.illusts[0]
