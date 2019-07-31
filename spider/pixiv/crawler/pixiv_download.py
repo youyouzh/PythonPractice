@@ -3,6 +3,7 @@
 import json
 import os
 import datetime
+import time
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivAPI
 from spider.pixiv.mysql.db import save_illustration
 
@@ -90,16 +91,20 @@ def rank_of_day():
 
 if __name__ == '__main__':
     MAX_PAGE_COUNT = 50
+    MAX_QUERY_COUNT = 800
     # 将爬取的时间和偏移持久化，下次可以接着爬
     date_offset_file = 'offset.json'
     date_offset_info = json.load(open(date_offset_file))
 
+    pixiv_api = AppPixivAPI()
     pixiv_api.login(_USERNAME, _PASSWORD)
     query_date = datetime.datetime.strptime(date_offset_info.get('date'), '%Y-%m-%d').date()
     now = datetime.date.today()
-    total_query_count = 0
+    total_query_count = 1
     print('------------begin-------------')
     while query_date < now:
+        if total_query_count % MAX_QUERY_COUNT == 0:
+            time.sleep(60)
         print('query date: %s, offset: %s' % (str(query_date), str(date_offset_info.get('offset'))))
         page_index = 0
         next_url_options = {
@@ -111,7 +116,7 @@ if __name__ == '__main__':
             print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
             illusts = pixiv_api.illust_ranking(**next_url_options)
             if not illusts.get('illusts'):
-                print('illust is empty.')
+                print('illust is empty.' + str(illusts))
                 break
             next_url_options = pixiv_api.parse_next_url_options(illusts.get('next_url'))
             total_query_count += 1

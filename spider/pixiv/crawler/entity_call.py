@@ -27,7 +27,8 @@ def main():
     pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.login(_USERNAME, _PASSWORD)
     # response = pixiv_api.user_detail(14674239)
-    response = pixiv_api.illust_detail(61446920)
+    # response = pixiv_api.illust_detail(61446920)
+    response = pixiv_api.illust_detail(75987864)  # R-18
     # response = pixiv_api.illust_ranking('day')
     print(to_json_str(response))
 
