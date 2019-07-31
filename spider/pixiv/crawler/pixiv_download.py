@@ -100,11 +100,9 @@ if __name__ == '__main__':
     pixiv_api.login(_USERNAME, _PASSWORD)
     query_date = datetime.datetime.strptime(date_offset_info.get('date'), '%Y-%m-%d').date()
     now = datetime.date.today()
-    total_query_count = 1
-    print('------------begin-------------')
+    total_query_count = 0
+    print('------------begin-------------' + str(datetime.datetime.now()))
     while query_date < now:
-        if total_query_count % MAX_QUERY_COUNT == 0:
-            time.sleep(60)
         print('query date: %s, offset: %s' % (str(query_date), str(date_offset_info.get('offset'))))
         page_index = 0
         next_url_options = {
@@ -116,7 +114,7 @@ if __name__ == '__main__':
             print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
             illusts = pixiv_api.illust_ranking(**next_url_options)
             if not illusts.get('illusts'):
-                print('illust is empty.' + str(illusts))
+                print('illust is empty.' + str(illusts) + '-------' + str(datetime.datetime.now()))
                 break
             next_url_options = pixiv_api.parse_next_url_options(illusts.get('next_url'))
             total_query_count += 1
