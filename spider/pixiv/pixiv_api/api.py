@@ -4,6 +4,7 @@ import os
 import shutil
 import json
 import requests
+from requests.adapters import HTTPAdapter
 
 from .utils import PixivError, JsonDict
 
@@ -18,6 +19,9 @@ class BasePixivAPI(object):
     def __init__(self, **requests_kwargs):
         """initialize requests kwargs if need be"""
         self.requests = requests.Session()
+        # 设置超时重试
+        self.requests.mount('http://', HTTPAdapter(max_retries=2))
+        self.requests.mount('https://', HTTPAdapter(max_retries=2))
         self.requests_kwargs = requests_kwargs
         self.additional_headers = {}
 

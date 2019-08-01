@@ -110,6 +110,7 @@ if __name__ == '__main__':
             'date': query_date,
             'offset': date_offset_info.get('offset')
         }
+        time.sleep(5)
         while page_index < MAX_PAGE_COUNT:
             print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
             illusts = pixiv_api.illust_ranking(**next_url_options)
