@@ -50,6 +50,7 @@ def save_illustration(illust: dict):
     illustration.is_bookmarked = illust.get('is_bookmarked')
     illustration.visible = illust.get('visible')
     illustration.is_muted = illust.get('is_muted')
+    illustration.r_18 = illust.get('r_18', False)
     illustration.total_comments = illust.get('total_comments', 0)
 
     # 保存tag

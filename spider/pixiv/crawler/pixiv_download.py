@@ -18,7 +18,6 @@ _REQUESTS_KWARGS = {
   # },
   # 'verify': False,       # PAPI use https, an easy way is disable requests SSL verify
 }
-pixiv_api = AppPixivAPI()
 
 
 # 下载用户收藏列表的图片
@@ -30,6 +29,7 @@ def download_user_bookmarks_illusts(user_id):
     next_url = True
     page_size = 1
     page_max_size = 20
+    pixiv_api = AppPixivAPI()
     while next_url and page_size < page_max_size:
         print('page: %d', page_size)
         json_result = pixiv_api.user_bookmarks_illust(user_id)
@@ -54,6 +54,7 @@ def download_user_illusts(user_id):
     next_url = '-'
     page_size = 1
     page_max_size = 20
+    pixiv_api = AppPixivAPI()
     while next_url and page_size < page_max_size:
         print('page: %d', page_size)
         json_result = pixiv_api.user_illusts(user_id)
@@ -71,6 +72,7 @@ def download_user_illusts(user_id):
 
 
 def rank_of_day():
+    pixiv_api = AppPixivAPI()
     json_result = pixiv_api.illust_ranking('day_male')
     print(json_result)
     illust = json_result.illusts[0]
@@ -89,11 +91,13 @@ def rank_of_day():
     # print(">>> %s, origin url: %s" % (illust.title, illust.image_urls['large']))
 
 
-if __name__ == '__main__':
-    MAX_PAGE_COUNT = 50
-    MAX_QUERY_COUNT = 800
+# 爬取所有每日榜单并保存
+def crawl_rank_illust_info():
+    max_page_count = 50
     # 将爬取的时间和偏移持久化，下次可以接着爬
-    date_offset_file = 'offset.json'
+    # date_offset_file = 'offset.json'
+    date_offset_file = 'offset-r-18.json'
+    is_r18 = True
     date_offset_info = json.load(open(date_offset_file))
 
     pixiv_api = AppPixivAPI()
@@ -106,12 +110,12 @@ if __name__ == '__main__':
         print('query date: %s, offset: %s' % (str(query_date), str(date_offset_info.get('offset'))))
         page_index = 0
         next_url_options = {
-            'mode': 'day',
+            'mode': 'day_r18',  # day
             'date': query_date,
             'offset': date_offset_info.get('offset')
         }
         time.sleep(5)
-        while page_index < MAX_PAGE_COUNT:
+        while page_index < max_page_count:
             print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
             illusts = pixiv_api.illust_ranking(**next_url_options)
             if not illusts.get('illusts'):
@@ -123,6 +127,7 @@ if __name__ == '__main__':
             print('next url: ' + illusts.get('next_url'))
             print("----> illust size: ", len(illusts.get('illusts')))
             for illust in illusts.get('illusts'):
+                illust['r_18'] = is_r18
                 save_illustration(illust)
             date_offset_info['date'] = str(query_date)
             date_offset_info['offset'] = next_url_options['offset']
@@ -130,5 +135,21 @@ if __name__ == '__main__':
         query_date = query_date + datetime.timedelta(days=1)
         date_offset_info['offset'] = 0
     print('-------------end-----------')
+
+
+def download(url):
+    directory = r"result/images/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    pixiv_api = AppPixivAPI()
+    pixiv_api.login(_USERNAME, _PASSWORD)
+    print('------begin download image------')
+    pixiv_api.download(url, '', directory, replace=True)
+    print('------end download image------')
+
+
+if __name__ == '__main__':
+    crawl_rank_illust_info()
+    # download(r'https://i.pximg.net/img-original/img/2018/01/02/18/10/27/66606892_p0.jpg')
 
 

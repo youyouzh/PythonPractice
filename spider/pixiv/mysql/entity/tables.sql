@@ -55,6 +55,7 @@ create table illustration
 	is_bookmarked boolean default false not null,
 	visible boolean default false not null comment '是否可见',
 	is_muted boolean default false not null,
+	r_18 boolean default false not null,
 	total_comments int default 0 not null comment '总评论数',
 	tools varchar(100) default '' not null comment '使用的绘制工具',
 	image_url_square_medium varchar(255) null comment '小图片地址',

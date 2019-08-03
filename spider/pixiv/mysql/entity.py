@@ -27,6 +27,7 @@ class Illustration(BaseModel):
     is_bookmarked = Column(TINYINT(1), nullable=False, server_default=text("'0'"))
     visible = Column(TINYINT(1), nullable=False, server_default=text("'0'"))
     is_muted = Column(TINYINT(1), nullable=False, server_default=text("'0'"))
+    r_18 = Column(TINYINT(1), nullable=False, server_default=text("'0'"))
     total_comments = Column(INTEGER(11), nullable=False, server_default=text("'0'"))
     tools = Column(String(100), nullable=False, server_default=text("''"))
     image_url_square_medium = Column(String(255))
