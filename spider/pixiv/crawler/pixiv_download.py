@@ -137,19 +137,25 @@ def crawl_rank_illust_info():
     print('-------------end-----------')
 
 
-def download(url):
-    directory = r"result/images/"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    pixiv_api = AppPixivAPI()
-    pixiv_api.login(_USERNAME, _PASSWORD)
-    print('------begin download image------')
-    pixiv_api.download(url, '', directory, replace=True)
-    print('------end download image------')
+def download():
+    download_urls_file = 'download_urls.txt'
+    file_handler = open(download_urls_file)
+    line = file_handler.readline()
+    while line:
+        line = line.strip('\n')
+        print('------begin download image------: ' + line)
+        directory = r"result/images/oshie/"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        pixiv_api = AppPixivAPI()
+        pixiv_api.login(_USERNAME, _PASSWORD)
+        pixiv_api.download(line, '', directory, replace=False)
+        print('------end download image------')
+        line = file_handler.readline()
 
 
 if __name__ == '__main__':
     crawl_rank_illust_info()
-    # download(r'https://i.pximg.net/img-original/img/2018/01/02/18/10/27/66606892_p0.jpg')
+    # download()
 
 
