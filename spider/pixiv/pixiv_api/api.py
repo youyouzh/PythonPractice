@@ -1,12 +1,12 @@
 # -*- coding:utf-8 -*-
 
 import os
-import shutil
 import json
 import requests
 from requests.adapters import HTTPAdapter
 
 from .utils import PixivError, JsonDict
+from PIL import Image
 
 
 class BasePixivAPI(object):
@@ -141,4 +141,10 @@ class BasePixivAPI(object):
             with open(img_path, 'wb') as out_file:
                 # shutil.copyfileobj(response.raw, out_file)
                 out_file.write(response.content)
+            # 转换文件格式
+            image = Image.open(img_path)
+            image_format = image.format
+            # 如果是webp格式转为jpeg格式
+            if image_format == 'WEBP':
+                image.save(img_path, 'JPEG')
             del response
