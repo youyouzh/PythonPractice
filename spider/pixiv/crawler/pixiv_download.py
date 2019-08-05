@@ -4,6 +4,7 @@ import json
 import os
 import datetime
 import time
+import threadpool
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivAPI
 from spider.pixiv.mysql.db import save_illustration
 
@@ -137,25 +138,31 @@ def crawl_rank_illust_info():
     print('-------------end-----------')
 
 
+def download_task(pixiv_api, directory, url):
+    print('------begin download image------: ' + url)
+    pixiv_api.download(url, '', directory, replace=False)
+    print('------end download image------: ' + url)
+
+
 def download():
+    directory = r"result/images/25-30/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    pixiv_api = AppPixivAPI()
+    pixiv_api.login(_USERNAME, _PASSWORD)
     download_urls_file = 'download_urls.txt'
     file_handler = open(download_urls_file)
     line = file_handler.readline()
     while line:
         line = line.strip('\n')
-        print('------begin download image------: ' + line)
-        directory = r"result/images/oshie/"
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        pixiv_api = AppPixivAPI()
-        pixiv_api.login(_USERNAME, _PASSWORD)
-        pixiv_api.download(line, '', directory, replace=False)
-        print('------end download image------')
+        download_task(pixiv_api, directory, line)
         line = file_handler.readline()
 
 
 if __name__ == '__main__':
-    crawl_rank_illust_info()
-    # download()
+    # crawl_rank_illust_info()
+    download()
+    # pool = threadpool.ThreadPool(10)
+
 
 
