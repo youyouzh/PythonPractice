@@ -139,24 +139,36 @@ def crawl_rank_illust_info():
 
 
 def download_task(pixiv_api, directory, url):
-    print('------begin download image------: ' + url)
+    print('------download image begin: %s ------: %s' % (time.time(), url))
     pixiv_api.download(url, '', directory, replace=False)
-    print('------end download image------: ' + url)
+    print('------download image end: %s ------: %s' % (time.time(), url))
 
 
-def download():
-    directory = r"result/images/25-30/"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    pixiv_api = AppPixivAPI()
-    pixiv_api.login(_USERNAME, _PASSWORD)
+def get_download_url_from_file():
+    # 读取需要下载的URL
+    url_list = []
     download_urls_file = 'download_urls.txt'
     file_handler = open(download_urls_file)
     line = file_handler.readline()
     while line:
         line = line.strip('\n')
-        download_task(pixiv_api, directory, line)
+        if line and line != '':
+            url_list.append(line)
         line = file_handler.readline()
+    return url_list
+
+
+def download():
+    # 创建文件夹
+    directory = r"result/images/35-40/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    pixiv_api = AppPixivAPI()
+    pixiv_api.login(_USERNAME, _PASSWORD)
+    url_list = get_download_url_from_file()
+    print('begin download image, url size: ' + str(len(url_list)))
+    for url in url_list:
+        download_task(pixiv_api, directory, url)
 
 
 if __name__ == '__main__':
