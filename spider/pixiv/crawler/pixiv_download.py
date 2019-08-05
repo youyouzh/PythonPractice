@@ -5,7 +5,7 @@ import os
 import datetime
 import time
 import threadpool
-from spider.pixiv.pixiv_api import AppPixivAPI, PixivAPI
+from spider.pixiv.pixiv_api import AppPixivAPI
 from spider.pixiv.mysql.db import save_illustration
 
 CONFIG = json.load(open('config.json'))
@@ -138,12 +138,14 @@ def crawl_rank_illust_info():
     print('-------------end-----------')
 
 
+# 下载指定地址的图片
 def download_task(pixiv_api, directory, url):
     print('------download image begin: %s ------: %s' % (time.time(), url))
     pixiv_api.download(url, '', directory, replace=False)
     print('------download image end: %s ------: %s' % (time.time(), url))
 
 
+# 从文件中获取下载链接
 def get_download_url_from_file():
     # 读取需要下载的URL
     url_list = []
