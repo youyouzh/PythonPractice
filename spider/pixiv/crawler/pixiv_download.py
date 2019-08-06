@@ -185,8 +185,7 @@ def download_by_pool():
     pixiv_api.login(_USERNAME, _PASSWORD)
     url_list = get_download_url_from_file()
     print('begin download image, url size: ' + str(len(url_list)))
-    pool = threadpool.ThreadPool(3)
-    url_list = url_list[:10]
+    pool = threadpool.ThreadPool(8)
     params = map(lambda v: (None, {'pixiv_api': pixiv_api, 'directory': directory, 'url': v}), url_list)
     task_list = threadpool.makeRequests(download_task, params)
     [pool.putRequest(task) for task in task_list]
