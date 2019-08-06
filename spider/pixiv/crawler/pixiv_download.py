@@ -138,13 +138,6 @@ def crawl_rank_illust_info():
     print('-------------end-----------')
 
 
-# 下载指定地址的图片
-def download_task(pixiv_api, directory, url):
-    print('------download image begin: %s ------: %s' % (time.time(), url))
-    pixiv_api.download(url, '', directory, replace=False)
-    print('------download image end: %s ------: %s' % (time.time(), url))
-
-
 # 从文件中获取下载链接
 def get_download_url_from_file():
     # 读取需要下载的URL
@@ -160,6 +153,13 @@ def get_download_url_from_file():
     return url_list
 
 
+# 下载指定地址的图片
+def download_task(pixiv_api, directory, url):
+    print('download image begin: %s, url: %s' % (time.time(), url))
+    pixiv_api.download(url, '', directory, replace=False)
+    print('download image end: %s, url: %s' % (time.time(), url))
+
+
 def download():
     # 创建文件夹
     directory = r"result/images/35-40/"
@@ -169,14 +169,33 @@ def download():
     pixiv_api.login(_USERNAME, _PASSWORD)
     url_list = get_download_url_from_file()
     print('begin download image, url size: ' + str(len(url_list)))
+    index = 0
     for url in url_list:
+        print('index: ' + str(index))
         download_task(pixiv_api, directory, url)
+        index += 1
+
+
+def download_by_pool():
+    # 创建文件夹
+    directory = r"result/images/40-50/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    pixiv_api = AppPixivAPI()
+    pixiv_api.login(_USERNAME, _PASSWORD)
+    url_list = get_download_url_from_file()
+    print('begin download image, url size: ' + str(len(url_list)))
+    pool = threadpool.ThreadPool(3)
+    url_list = url_list[:10]
+    params = map(lambda v: (None, {'pixiv_api': pixiv_api, 'directory': directory, 'url': v}), url_list)
+    task_list = threadpool.makeRequests(download_task, params)
+    [pool.putRequest(task) for task in task_list]
+    pool.wait()
 
 
 if __name__ == '__main__':
     # crawl_rank_illust_info()
-    download()
-    # pool = threadpool.ThreadPool(10)
+    download_by_pool()
 
 
 
