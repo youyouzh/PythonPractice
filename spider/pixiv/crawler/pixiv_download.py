@@ -96,8 +96,8 @@ def rank_of_day():
 def crawl_rank_illust_info():
     max_page_count = 50
     # 将爬取的时间和偏移持久化，下次可以接着爬
-    # date_offset_file = 'offset.json'
-    date_offset_file = 'offset-r-18.json'
+    date_offset_file = 'offset.json'
+    # date_offset_file = 'offset-r-18.json'
     is_r18 = True
     date_offset_info = json.load(open(date_offset_file))
 
@@ -111,11 +111,11 @@ def crawl_rank_illust_info():
         print('query date: %s, offset: %s' % (str(query_date), str(date_offset_info.get('offset'))))
         page_index = 0
         next_url_options = {
-            'mode': 'day_r18',  # day
+            'mode': 'day',  # day
             'date': query_date,
             'offset': date_offset_info.get('offset')
         }
-        time.sleep(5)
+        time.sleep(2)
         while page_index < max_page_count:
             print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
             illusts = pixiv_api.illust_ranking(**next_url_options)
@@ -178,7 +178,7 @@ def download():
 
 def download_by_pool():
     # 创建文件夹
-    directory = r"result/images/40-50/"
+    directory = r"result/images/2010-2016-500/"
     if not os.path.exists(directory):
         os.makedirs(directory)
     pixiv_api = AppPixivAPI()
@@ -193,8 +193,8 @@ def download_by_pool():
 
 
 if __name__ == '__main__':
-    # crawl_rank_illust_info()
-    download_by_pool()
+    crawl_rank_illust_info()
+    # download_by_pool()
 
 
 
