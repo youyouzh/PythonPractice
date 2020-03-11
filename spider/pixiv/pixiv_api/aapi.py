@@ -22,6 +22,8 @@ class AppPixivAPI(BasePixivAPI):
 
     # Check auth and set BearerToken to headers
     def no_auth_requests_call(self, method, url, headers={}, params=None, data=None, req_auth=True):
+        if self.hosts != "https://app-api.pixiv.net":
+            headers['host'] = 'app-api.pixiv.net'
         if headers.get('User-Agent', None) is None and headers.get('user-agent', None) is None:
             # Set User-Agent if not provided
             headers['App-OS'] = 'ios'

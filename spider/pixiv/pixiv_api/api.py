@@ -1,17 +1,20 @@
 # -*- coding:utf-8 -*-
-
-import os
+import hashlib
 import json
+import os
+from datetime import datetime
+
 import requests
-from requests.adapters import HTTPAdapter
+from PIL import Image
 
 from .utils import PixivError, JsonDict
-from PIL import Image
 
 
 class BasePixivAPI(object):
     client_id = 'MOBrBDS8blbauoSck0ZfDbtuzpyT'
     client_secret = 'lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj'
+    hash_secret = '28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c'
+
     access_token = None
     user_id = 0
     refresh_token = None
@@ -19,9 +22,6 @@ class BasePixivAPI(object):
     def __init__(self, **requests_kwargs):
         """initialize requests kwargs if need be"""
         self.requests = requests.Session()
-        # 设置超时重试
-        self.requests.mount('http://', HTTPAdapter(max_retries=2))
-        self.requests.mount('https://', HTTPAdapter(max_retries=2))
         self.requests_kwargs = requests_kwargs
         self.additional_headers = {}
 
@@ -29,6 +29,8 @@ class BasePixivAPI(object):
         """manually specify additional headers. will overwrite API default headers in case of collision"""
         self.additional_headers = headers
 
+    # 设置HTTP的Accept-Language (用于获取tags的对应语言translated_name)
+    # language: en-us, zh-cn, ...
     def set_accept_language(self, language):
         """
         set header Accept-Language for all requests (useful for get tags.translated_name)
@@ -49,7 +51,6 @@ class BasePixivAPI(object):
         return json.loads(json_str, object_hook=_obj_hook)
 
     def require_auth(self):
-        """check auth, if not auth, raise error"""
         if self.access_token is None:
             raise PixivError('Authentication required! Call login() or set_auth() first!')
 
@@ -83,11 +84,18 @@ class BasePixivAPI(object):
 
     def auth(self, username=None, password=None, refresh_token=None):
         """Login with password, or use the refresh_token to acquire a new bearer token"""
-
-        url = 'https://oauth.secure.pixiv.net/auth/token'
+        local_time = datetime.utcnow().strftime( '%Y-%m-%dT%H:%M:%S+00:00' )
         headers = {
             'User-Agent': 'PixivAndroidApp/5.0.64 (Android 6.0)',
+            'X-Client-Time': local_time,
+            'X-Client-Hash': hashlib.md5((local_time + self.hash_secret).encode('utf-8')).hexdigest(),
         }
+        if not hasattr(self, 'hosts') or self.hosts == "https://app-api.pixiv.net":
+            auth_hosts = "https://oauth.secure.pixiv.net"
+        else:
+            auth_hosts = self.hosts  # BAPI解析成IP的场景
+            headers['host'] = 'oauth.secure.pixiv.net'
+        url = '%s/auth/token' % auth_hosts
         data = {
             'get_secure_url': 1,
             'client_id': self.client_id,

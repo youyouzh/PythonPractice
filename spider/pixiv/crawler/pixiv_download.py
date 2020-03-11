@@ -178,7 +178,7 @@ def download():
 
 def download_by_pool():
     # 创建文件夹
-    directory = r"result/images/2010-2016-500/"
+    directory = r"result/images/2012-2016-1000-1500/"
     if not os.path.exists(directory):
         os.makedirs(directory)
     pixiv_api = AppPixivAPI()

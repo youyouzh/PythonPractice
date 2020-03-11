@@ -7,6 +7,7 @@ BaseModel = declarative_base()
 metadata = BaseModel.metadata
 
 
+# 插画基本信息表
 class Illustration(BaseModel):
     __tablename__ = 'illustration'
 
@@ -39,6 +40,29 @@ class Illustration(BaseModel):
     updated_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
 
 
+# 插画图片信息表
+class IllustrationImage(BaseModel):
+    __tablename__ = 'illustration_image'
+    __table_args__ = (
+        Index('image_url_large', unique=True),
+    )
+
+    id = Column(BIGINT(20), primary_key=True)
+    user_id = Column(BIGINT(20), nullable=False, index=True)
+    illust_id = Column(BIGINT(20), nullable=False, index=True)
+    title = Column(String(255), nullable=False, server_default=text("''"))
+    page_index = Column(INTEGER(11), nullable=False, server_default=text("'0'"))
+    image_url_square_medium = Column(String(255))
+    image_url_medium = Column(String(255))
+    image_url_large = Column(String(255))
+    image_url_origin = Column(String(255))
+    image_url_meta_origin = Column(String(255))
+    process = Column(String(64))
+    created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
+
+
+# 插画标签表
 class IllustrationTag(BaseModel):
     __tablename__ = 'illustration_tag'
     __table_args__ = (
@@ -54,6 +78,7 @@ class IllustrationTag(BaseModel):
     updated_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
 
 
+# 插画用户表
 class PixivUser(BaseModel):
     __tablename__ = 'pixiv_user'
 

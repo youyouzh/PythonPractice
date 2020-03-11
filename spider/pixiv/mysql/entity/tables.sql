@@ -63,8 +63,8 @@ create table illustration
 	image_url_large varchar(255) null comment '大图片地址',
 	image_url_origin varchar(255) null comment '原始图片地址',
 	image_url_meta_origin varchar(255) null,
-	created_at timestamp default current_timestamp not null,
-	updated_at timestamp default current_timestamp not null,
+	created_at timestamp default current_timestamp not null comment '记录创建时间',
+	updated_at timestamp default current_timestamp not null comment '记录更新时间',
 	index `index_user_id` (`user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT='插画信息表';
 
@@ -82,3 +82,21 @@ create table illustration_tag
     index `index_user_id` (`user_id`),
     index `index_illust_id` (`illust_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT='插画标签表';
+
+create table illustration_image
+(
+	id bigint auto_increment PRIMARY KEY comment '',
+	user_id bigint not null comment '创建者P站用户id',
+	illust_id bigint not null comment 'P站插画id',
+	title varchar(255) not null comment '插画标题',
+	page_index int default 1 not null comment '编号，用于标识第几页',
+    image_url_square_medium varchar(255) null comment '小图片地址',
+	image_url_medium varchar(255) null comment '中等图片地址',
+	image_url_large varchar(255) unique null comment '大图片地址',
+	image_url_origin varchar(255) null comment '原始图片地址，用于多页插画的每一页',
+	image_url_meta_origin varchar(255) null comment '原始图片地址，用于单页插画',
+	process varchar(64) null comment '处理情况，如已下载',
+	created_at timestamp default current_timestamp not null comment '记录创建时间',
+	updated_at timestamp default current_timestamp not null comment '记录更新时间',
+	index `index_user_id` (`user_id`)
+);

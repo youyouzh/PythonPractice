@@ -30,10 +30,13 @@ def save_illustration(illust: dict):
     image_url_info = illust.get('image_urls')
     illustration.image_url_square_medium = image_url_info.get('square_medium')
     illustration.image_url_medium = image_url_info.get('medium')
-    illustration.image_url_large = image_url_info.get('large')
+    illustration.image_url_large = image_url_info.get('large', '')
     illustration.image_url_origin = image_url_info.get('origin', '')
+
+    # 单页插画处理
     if 'meta_single_page' in illust and 'original_image_url' in illust.get('meta_single_page'):
         illustration.image_url_meta_origin = illust.get('meta_single_page').get('original_image_url')
+    # 多页插画处理
 
     illustration.tools = json.dumps(illust.get('tools'), ensure_ascii=False)
     illustration.create_date = illust.get('create_date')
