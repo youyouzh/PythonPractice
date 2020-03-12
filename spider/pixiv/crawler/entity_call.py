@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import json
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivAPI
+from spider.pixiv.mysql.db import save_illustration
 
 CONFIG = json.load(open('config.json'))
 _USERNAME = CONFIG.get('username')
@@ -22,16 +23,30 @@ def to_json_str(response):
     return json.dumps(response, ensure_ascii=False, indent=4)
 
 
+def save_illust(illust=None):
+    if illust is None:
+        # illust = json.load(open(r"../mysql/entity_example/illust-multi.json", encoding='utf8'))
+        illust = json.load(open(r"../mysql/entity_example/illust.json", encoding='utf8'))
+    if 'illust' in illust:
+        save_illustration(illust.get('illust'))
+        print("save success")
+    else:
+        print("illust is empty.")
+
+
 def main():
     # app-api
     pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.login(_USERNAME, _PASSWORD)
     # response = pixiv_api.user_detail(illust_detail)
-    # response = pixiv_api.illust_detail(68376038)
+    # response = pixiv_api.illust_detail(68376038)  # single page
+    response = pixiv_api.illust_detail(75872584)  # multi page
     # response = pixiv_api.illust_detail(75987864)  # R-18
-    response = pixiv_api.illust_ranking('day')
+    # response = pixiv_api.illust_ranking('day')    # ranking
     print(to_json_str(response))
+    save_illust(response)
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    save_illust()

@@ -97,8 +97,7 @@ def crawl_rank_illust_info():
     max_page_count = 50
     # 将爬取的时间和偏移持久化，下次可以接着爬
     date_offset_file = 'offset.json'
-    # date_offset_file = 'offset-r-18.json'
-    is_r18 = True
+    is_r18 = False
     date_offset_info = json.load(open(date_offset_file))
 
     pixiv_api = AppPixivAPI()
@@ -111,14 +110,15 @@ def crawl_rank_illust_info():
         print('query date: %s, offset: %s' % (str(query_date), str(date_offset_info.get('offset'))))
         page_index = 0
         next_url_options = {
-            'mode': 'day',  # day
+            'mode': 'day_r18' if is_r18 else 'day',  # day_r18
             'date': query_date,
-            'offset': date_offset_info.get('offset')
+            'offset': date_offset_info.get('offset-r-18.json' if is_r18 else 'offset.json')
         }
         time.sleep(2)
         while page_index < max_page_count:
             print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
             illusts = pixiv_api.illust_ranking(**next_url_options)
+            # illusts = json.load(open(r"../mysql/entity_example/rank-1.json", encoding='utf8'))
             if not illusts.get('illusts'):
                 print('illust is empty.' + str(illusts) + '-------' + str(datetime.datetime.now()))
                 break

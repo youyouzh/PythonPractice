@@ -5,9 +5,9 @@ import sqlalchemy as sql
 from sqlalchemy.orm import sessionmaker
 
 from spider.pixiv.pixiv_api import PixivError
-from .entity import Illustration, IllustrationTag, PixivUser
+from .entity import Illustration, IllustrationTag, IllustrationImage, PixivUser
 
-engine = sql.create_engine('mysql+pymysql://uusama:uusama@localhost:3306/pixiv?charset=utf8mb4')
+engine = sql.create_engine('mysql+pymysql://uusama:uusama@localhost:3306/pixiv_2?charset=utf8mb4')
 session = sessionmaker(bind=engine)()
 
 
@@ -17,6 +17,9 @@ def save_illustration(illust: dict):
     if 'image_urls' not in illust:
         raise PixivError('Illust image is empty.')
     illustration = Illustration(id=illust.get('id'), title=illust.get('title'), type=illust.get('type'))
+    if session.query(Illustration).filter(Illustration.id == illustration.id).first is not None:
+        print("The illustration is exist. illust_id: " + str(illustration.id))
+        return
     illustration.caption = illust.get('caption')
     illustration.restrict = illust.get('restrict')
 
@@ -26,17 +29,12 @@ def save_illustration(illust: dict):
     pixiv_user.is_followed = user_info.get('is_followed')
     illustration.user_id = user_info.get('id')
 
-    # 图片链接地址
-    image_url_info = illust.get('image_urls')
-    illustration.image_url_square_medium = image_url_info.get('square_medium')
-    illustration.image_url_medium = image_url_info.get('medium')
-    illustration.image_url_large = image_url_info.get('large', '')
-    illustration.image_url_origin = image_url_info.get('origin', '')
-
-    # 单页插画处理
-    if 'meta_single_page' in illust and 'original_image_url' in illust.get('meta_single_page'):
-        illustration.image_url_meta_origin = illust.get('meta_single_page').get('original_image_url')
-    # 多页插画处理
+    # 首页图片链接地址
+    illustration_image = save_illustration_image(illust, illustration)
+    illustration.image_url_square_medium = illustration_image.get('image_url_square_medium', None)
+    illustration.image_url_medium = illustration_image.get('image_url_medium', None)
+    illustration.image_url_large = illustration_image.get('image_url_large', None)
+    illustration.image_url_origin = illustration_image.get('image_url_origin', None)
 
     illustration.tools = json.dumps(illust.get('tools'), ensure_ascii=False)
     illustration.create_date = illust.get('create_date')
@@ -61,10 +59,48 @@ def save_illustration(illust: dict):
     if 'tags' in illust and len(illust.get('tags')):
         for tag in illust.get('tags'):
             illust_tag_info = {'user_id': user_info.get('id'), 'illust_id': illust.get('id'),
-                               'name': tag.get('name'), 'translated_name': tag.get('translated_name', '')}
+                               'name': tag.get('name'), 'translated_name': ''}
             illust_tag = session.execute(IllustrationTag.__table__.insert().prefix_with('IGNORE'), illust_tag_info)
             illust_tags.append(illust_tag)
     session.merge(illustration)
     session.merge(pixiv_user)
     session.commit()
 
+
+def save_illustration_image(illust: dict, illustration: Illustration):
+    # 图片链接地址
+    illustration_image = base_illustration_image(illustration)
+
+    # 单页插画处理
+    image_url_info = illust.get('image_urls')
+    illustration_image['image_url_square_medium'] = image_url_info.get('square_medium')
+    illustration_image['image_url_medium'] = image_url_info.get('medium')
+    illustration_image['image_url_large'] = image_url_info.get('large', '')
+    illustration_image['image_url_origin'] = ''
+    if 'meta_single_page' in illust and 'original_image_url' in illust.get('meta_single_page'):
+        illustration_image['image_url_origin'] = illust.get('meta_single_page').get('original_image_url', '')
+    session.execute(IllustrationImage.__table__.insert().prefix_with('IGNORE'), illustration_image)
+
+    # 多页插画图片地址处理
+    page_index = 0
+    for meta_image_url in illust.get('meta_pages'):
+        if 'image_urls' in meta_image_url:
+            page_index += 1
+            meta_image_url_info = meta_image_url.get('image_urls')
+            meta_illustration_image = base_illustration_image(illustration)
+            meta_illustration_image['page_index'] = page_index
+            meta_illustration_image['image_url_square_medium'] = meta_image_url_info.get('square_medium', '')
+            meta_illustration_image['image_url_medium'] = meta_image_url_info.get('medium', '')
+            meta_illustration_image['image_url_large'] = meta_image_url_info.get('large', '')
+            meta_illustration_image['image_url_origin'] = meta_image_url_info.get('original', '')
+            session.execute(IllustrationImage.__table__.insert().prefix_with('IGNORE'), meta_illustration_image)
+    return illustration_image
+
+
+def base_illustration_image(illustration: Illustration):
+    return {
+        'user_id': illustration.user_id,
+        'illust_id': illustration.id,
+        'title': illustration.title,
+        'page_index': 1
+    }

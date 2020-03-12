@@ -31,11 +31,10 @@ class Illustration(BaseModel):
     r_18 = Column(TINYINT(1), nullable=False, server_default=text("'0'"))
     total_comments = Column(INTEGER(11), nullable=False, server_default=text("'0'"))
     tools = Column(String(100), nullable=False, server_default=text("''"))
-    image_url_square_medium = Column(String(255))
-    image_url_medium = Column(String(255))
-    image_url_large = Column(String(255))
-    image_url_origin = Column(String(255))
-    image_url_meta_origin = Column(String(255))
+    image_url_square_medium = Column(String(255), nullable=False, server_default=text("''"))
+    image_url_medium = Column(String(255), nullable=False, server_default=text("''"))
+    image_url_large = Column(String(255), nullable=False, server_default=text("''"))
+    image_url_origin = Column(String(255), nullable=False, server_default=text("''"))
     created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
 
@@ -44,7 +43,7 @@ class Illustration(BaseModel):
 class IllustrationImage(BaseModel):
     __tablename__ = 'illustration_image'
     __table_args__ = (
-        Index('image_url_large', unique=True),
+        Index('uk_', 'image_url_large', unique=True),
     )
 
     id = Column(BIGINT(20), primary_key=True)
@@ -52,12 +51,11 @@ class IllustrationImage(BaseModel):
     illust_id = Column(BIGINT(20), nullable=False, index=True)
     title = Column(String(255), nullable=False, server_default=text("''"))
     page_index = Column(INTEGER(11), nullable=False, server_default=text("'0'"))
-    image_url_square_medium = Column(String(255))
-    image_url_medium = Column(String(255))
-    image_url_large = Column(String(255))
-    image_url_origin = Column(String(255))
-    image_url_meta_origin = Column(String(255))
-    process = Column(String(64))
+    image_url_square_medium = Column(String(255), nullable=False, server_default=text("''"))
+    image_url_medium = Column(String(255), nullable=False, server_default=text("''"))
+    image_url_large = Column(String(255), nullable=False, server_default=text("''"))
+    image_url_origin = Column(String(255), nullable=False, server_default=text("''"))
+    process = Column(String(64), nullable=False, server_default=text("''"))
     created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
 
