@@ -98,6 +98,7 @@ def crawl_rank_illust_info():
     # 将爬取的时间和偏移持久化，下次可以接着爬
     date_offset_file = 'offset.json'
     is_r18 = False
+    rate_limit_tag = False
     date_offset_info = json.load(open(date_offset_file))
 
     pixiv_api = AppPixivAPI()
@@ -114,13 +115,15 @@ def crawl_rank_illust_info():
             'date': query_date,
             'offset': date_offset_info.get('offset-r-18.json' if is_r18 else 'offset.json')
         }
-        time.sleep(2)
         while page_index < max_page_count:
             print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
             illusts = pixiv_api.illust_ranking(**next_url_options)
             # illusts = json.load(open(r"../mysql/entity_example/rank-1.json", encoding='utf8'))
             if not illusts.get('illusts'):
                 print('illust is empty.' + str(illusts) + '-------' + str(datetime.datetime.now()))
+                if 'error' in illusts:
+                    # 访问频率限制
+                    rate_limit_tag = True
                 break
             next_url_options = pixiv_api.parse_next_url_options(illusts.get('next_url'))
             total_query_count += 1
@@ -133,6 +136,12 @@ def crawl_rank_illust_info():
             date_offset_info['date'] = str(query_date)
             date_offset_info['offset'] = next_url_options['offset']
             json.dump(date_offset_info, open(date_offset_file, 'w'), ensure_ascii=False, indent=4)
+
+        if rate_limit_tag:
+            # 出现访问限制则等一分钟
+            rate_limit_tag = False
+            time.sleep(60)
+            continue
         query_date = query_date + datetime.timedelta(days=1)
         date_offset_info['offset'] = 0
     print('-------------end-----------')

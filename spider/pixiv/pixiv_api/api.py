@@ -6,6 +6,7 @@ from datetime import datetime
 
 import requests
 from PIL import Image
+from requests.adapters import HTTPAdapter
 
 from .utils import PixivError, JsonDict
 
@@ -14,6 +15,7 @@ class BasePixivAPI(object):
     client_id = 'MOBrBDS8blbauoSck0ZfDbtuzpyT'
     client_secret = 'lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj'
     hash_secret = '28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c'
+    response_back_file = r'response.json'
 
     access_token = None
     user_id = 0
@@ -22,6 +24,8 @@ class BasePixivAPI(object):
     def __init__(self, **requests_kwargs):
         """initialize requests kwargs if need be"""
         self.requests = requests.Session()
+        self.requests.mount("http://", HTTPAdapter(max_retries=10))
+        self.requests.mount("https://", HTTPAdapter(max_retries=10))
         self.requests_kwargs = requests_kwargs
         self.additional_headers = {}
 
@@ -84,7 +88,10 @@ class BasePixivAPI(object):
 
     def auth(self, username=None, password=None, refresh_token=None):
         """Login with password, or use the refresh_token to acquire a new bearer token"""
-        local_time = datetime.utcnow().strftime( '%Y-%m-%dT%H:%M:%S+00:00' )
+        if os.path.isfile(self.response_back_file):
+            print("read token from file: " + self.response_back_file)
+            return self.extract_token(json.load(open(self.response_back_file)))
+        local_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+00:00')
         headers = {
             'User-Agent': 'PixivAndroidApp/5.0.64 (Android 6.0)',
             'X-Client-Time': local_time,
@@ -112,24 +119,26 @@ class BasePixivAPI(object):
         else:
             raise PixivError('[ERROR] auth() but no password or refresh_token is set.')
 
-        r = self.requests_call('POST', url, headers=headers, data=data)
-        if r.status_code not in [200, 301, 302]:
+        response = self.requests_call('POST', url, headers=headers, data=data)
+        json.dump(self.parse_json(response.text), open(self.response_back_file, 'w'), ensure_ascii=False, indent=4)
+        if response.status_code not in [200, 301, 302]:
             if data['grant_type'] == 'password':
                 raise PixivError('[ERROR] auth() failed! check username and password.\nHTTP %s: %s'
-                                 % (r.status_code, r.text), header=r.headers, body=r.text)
+                                 % (response.status_code, response.text), header=response.headers, body=response.text)
             else:
                 raise PixivError('[ERROR] auth() failed! check refresh_token.\nHTTP %s: %s'
-                                 % (r.status_code, r.text), header=r.headers, body=r.text)
+                                 % (response.status_code, response.text), header=response.headers, body=response.text)
 
-        token = None
+        return self.extract_token(self.parse_json(response.text))
+
+    def extract_token(self, token):
         try:
             # get access_token
-            token = self.parse_json(r.text)
-            self.access_token = token.response.access_token
-            self.user_id = token.response.user.id
-            self.refresh_token = token.response.refresh_token
+            self.access_token = token['response']['access_token']
+            self.user_id = token['response']['user']['id']
+            self.refresh_token = token['response']['refresh_token']
         except:
-            raise PixivError('Get access_token error! Response: %s' % token, header=r.headers, body=r.text)
+            raise PixivError('Get access_token error! Response: %s' % token, body=token)
 
         # return auth/token response
         return token

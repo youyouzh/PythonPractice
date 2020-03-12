@@ -17,7 +17,7 @@ def save_illustration(illust: dict):
     if 'image_urls' not in illust:
         raise PixivError('Illust image is empty.')
     illustration = Illustration(id=illust.get('id'), title=illust.get('title'), type=illust.get('type'))
-    if session.query(Illustration).filter(Illustration.id == illustration.id).first is not None:
+    if session.query(Illustration).filter(Illustration.id == illustration.id).first() is not None:
         print("The illustration is exist. illust_id: " + str(illustration.id))
         return
     illustration.caption = illust.get('caption')
