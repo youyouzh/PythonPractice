@@ -115,6 +115,7 @@ def crawl_rank_illust_info():
             'date': query_date,
             'offset': date_offset_info.get('offset-r-18.json' if is_r18 else 'offset.json')
         }
+        time.sleep(2)
         while page_index < max_page_count:
             print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
             illusts = pixiv_api.illust_ranking(**next_url_options)
@@ -122,6 +123,9 @@ def crawl_rank_illust_info():
             if not illusts.get('illusts'):
                 print('illust is empty.' + str(illusts) + '-------' + str(datetime.datetime.now()))
                 if 'error' in illusts:
+                    if illusts.get('error').get('message', '').find('OAuth') >= 0:
+                        print("Access Token is invalid, refresh token.")
+                        pixiv_api.auth(_USERNAME, _PASSWORD)
                     # 访问频率限制
                     rate_limit_tag = True
                 break
@@ -140,7 +144,7 @@ def crawl_rank_illust_info():
         if rate_limit_tag:
             # 出现访问限制则等一分钟
             rate_limit_tag = False
-            time.sleep(60)
+            time.sleep(10)
             continue
         query_date = query_date + datetime.timedelta(days=1)
         date_offset_info['offset'] = 0

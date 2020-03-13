@@ -88,7 +88,8 @@ class BasePixivAPI(object):
 
     def auth(self, username=None, password=None, refresh_token=None):
         """Login with password, or use the refresh_token to acquire a new bearer token"""
-        if os.path.isfile(self.response_back_file):
+        if os.path.isfile(self.response_back_file) and self.refresh_token is None:
+            # try to read access_token from file when login.
             print("read token from file: " + self.response_back_file)
             return self.extract_token(json.load(open(self.response_back_file)))
         local_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+00:00')
