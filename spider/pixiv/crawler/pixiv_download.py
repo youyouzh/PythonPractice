@@ -95,10 +95,8 @@ def rank_of_day():
 # 爬取所有每日榜单并保存
 def crawl_rank_illust_info():
     max_page_count = 50
-    # 将爬取的时间和偏移持久化，下次可以接着爬
-    date_offset_file = 'offset.json'
     is_r18 = False
-    rate_limit_tag = False
+    date_offset_file = 'offset-r-18.json' if is_r18 else 'offset.json'
     date_offset_info = json.load(open(date_offset_file))
 
     pixiv_api = AppPixivAPI()
@@ -108,27 +106,37 @@ def crawl_rank_illust_info():
     total_query_count = 0
     print('------------begin-------------' + str(datetime.datetime.now()))
     while query_date < now:
+        # 依次查询每一天的排行榜
         print('query date: %s, offset: %s' % (str(query_date), str(date_offset_info.get('offset'))))
         page_index = 0
         next_url_options = {
-            'mode': 'day_r18' if is_r18 else 'day',  # day_r18
+            'mode': 'day_r18' if is_r18 else 'day',
             'date': query_date,
-            'offset': date_offset_info.get('offset-r-18.json' if is_r18 else 'offset.json')
+            'offset': date_offset_info.get('offset')
         }
-        time.sleep(2)
+        # time.sleep(2)
         while page_index < max_page_count:
+            # 每天查询 max_page_count 次
             print("----> date: %s, page index: %d, query count: %d" % (str(query_date), page_index, total_query_count))
             illusts = pixiv_api.illust_ranking(**next_url_options)
             # illusts = json.load(open(r"../mysql/entity_example/rank-1.json", encoding='utf8'))
             if not illusts.get('illusts'):
+                # 查询结果为空，分两种情况，一种是发生错误，一种是没有数据了
                 print('illust is empty.' + str(illusts) + '-------' + str(datetime.datetime.now()))
-                if 'error' in illusts:
-                    if illusts.get('error').get('message', '').find('OAuth') >= 0:
-                        print("Access Token is invalid, refresh token.")
-                        pixiv_api.auth(_USERNAME, _PASSWORD)
-                    # 访问频率限制
-                    rate_limit_tag = True
-                break
+                if 'error' not in illusts:
+                    # 不是发生了错误，那就是这天的数据已经爬完了，接着爬明天的
+                    break
+
+                if illusts.get('error').get('message', '').find('Rate Limit') >= 0:
+                    # 访问频率限制则等待一下继续重试
+                    time.sleep(10)
+                if illusts.get('error').get('message', '').find('OAuth') >= 0:
+                    # token过期(一个小时就会过期)，刷新token然后重试
+                    print("Access Token is invalid, refresh token.")
+                    pixiv_api.auth()
+                continue
+
+            # 提取下次的爬取连接，并把数据保存
             next_url_options = pixiv_api.parse_next_url_options(illusts.get('next_url'))
             total_query_count += 1
             page_index += 1
@@ -137,15 +145,13 @@ def crawl_rank_illust_info():
             for illust in illusts.get('illusts'):
                 illust['r_18'] = is_r18
                 save_illustration(illust)
+
+            # 将爬取的时间和偏移持久化，即使中断下次也可以接着爬
             date_offset_info['date'] = str(query_date)
             date_offset_info['offset'] = next_url_options['offset']
             json.dump(date_offset_info, open(date_offset_file, 'w'), ensure_ascii=False, indent=4)
 
-        if rate_limit_tag:
-            # 出现访问限制则等一分钟
-            rate_limit_tag = False
-            time.sleep(10)
-            continue
+        # 爬取下一天的数据
         query_date = query_date + datetime.timedelta(days=1)
         date_offset_info['offset'] = 0
     print('-------------end-----------')
