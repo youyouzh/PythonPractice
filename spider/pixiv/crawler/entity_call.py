@@ -25,8 +25,8 @@ def to_json_str(response):
 
 def save_illust(illust=None):
     if illust is None:
-        # illust = json.load(open(r"../mysql/entity_example/illust-multi.json", encoding='utf8'))
-        illust = json.load(open(r"../mysql/entity_example/illust.json", encoding='utf8'))
+        illust = json.load(open(r"../mysql/entity_example/illust-multi.json", encoding='utf8'))
+        # illust = json.load(open(r"../mysql/entity_example/illust.json", encoding='utf8'))
     if 'illust' in illust:
         save_illustration(illust.get('illust'))
         print("save success")
@@ -49,7 +49,7 @@ def main():
 
 if __name__ == '__main__':
     # main()
-    # save_illust()
-    result = get_illustration_image(64118130)
-    result = get_illustration(64118130)
-    print(result)
+    save_illust()
+    # result = get_illustration_image(64118130)
+    # result = get_illustration(64118130)
+    # print(result)

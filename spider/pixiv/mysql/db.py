@@ -18,9 +18,9 @@ def save_illustration(illust: dict) -> None:
     if 'image_urls' not in illust:
         raise PixivError('Illust image is empty.')
     illustration = Illustration(id=illust.get('id'), title=illust.get('title'), type=illust.get('type'))
-    if session.query(Illustration).filter(Illustration.id == illustration.id).first() is not None:
-        print("The illustration is exist. illust_id: " + str(illustration.id))
-        return
+    # if session.query(Illustration).filter(Illustration.id == illustration.id).first() is not None:
+    #     print("The illustration is exist. illust_id: " + str(illustration.id))
+    #     return
     illustration.caption = illust.get('caption')
     illustration.restrict = illust.get('restrict')
 
@@ -80,7 +80,8 @@ def save_illustration_image(illust: dict, illustration: Illustration) -> dict:
     illustration_image['image_url_origin'] = ''
     if 'meta_single_page' in illust and 'original_image_url' in illust.get('meta_single_page'):
         illustration_image['image_url_origin'] = illust.get('meta_single_page').get('original_image_url', '')
-    session.execute(IllustrationImage.__table__.insert().prefix_with('IGNORE'), illustration_image)
+        session.execute(IllustrationImage.__table__.insert().prefix_with('IGNORE'), illustration_image)
+        session.commit()
 
     # 多页插画图片地址处理
     page_index = 0
@@ -95,6 +96,7 @@ def save_illustration_image(illust: dict, illustration: Illustration) -> dict:
             meta_illustration_image['image_url_large'] = meta_image_url_info.get('large', '')
             meta_illustration_image['image_url_origin'] = meta_image_url_info.get('original', '')
             session.execute(IllustrationImage.__table__.insert().prefix_with('IGNORE'), meta_illustration_image)
+            session.commit()
     return illustration_image
 
 
@@ -112,6 +114,7 @@ def query_top_total_bookmarks(count=100000) -> list:
     if os.path.isfile(cache_file):
         return json.load(open(cache_file))
     results = session.query(Illustration.id, Illustration.total_bookmarks, Illustration.total_view)\
+        .filter(Illustration.type == 'illust')\
         .order_by(Illustration.total_bookmarks.desc()).limit(count).all()
     result = [dict(zip(v.keys(), v)) for v in results]
     json.dump(result, open(cache_file, 'w'), ensure_ascii=False, indent=4)
@@ -128,3 +131,4 @@ def get_illustration_image(illustration_id: int) -> [IllustrationImage]:
 
 def update_illustration_image(illustration_image: IllustrationImage):
     session.merge(illustration_image)
+    session.commit()

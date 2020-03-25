@@ -183,11 +183,11 @@ def download_by_illustration_id(pixiv_api, directory, illustration_id: int):
         print("The illustration image is not exist. illustration_id: " + str(illustration_id))
         return
     for illustration_image in illustration_images:
-        print("begin process illust_id: %s, image_url: %s" % illustration_image.illust_id,
-              illustration_image.image_url_origin)
-        if illustration_image.image_url_origin is None:
+        if illustration_image.image_url_origin is None or illustration_image.image_url_origin == '':
             print("The illustration_image image_url_origin is none. illustration_id: " + str(illustration_id))
             continue
+        print("begin process illust_id: %s, image_url: %s" % (illustration_image.illust_id,
+                                                              illustration_image.image_url_origin))
         download_task(pixiv_api, directory, illustration_image.image_url_origin)
         illustration_image.process = 'DOWNLOADED'
         update_illustration_image(illustration_image)
@@ -203,7 +203,7 @@ def download_task(pixiv_api, directory, url):
 # 下载TOP收藏图片
 def download_top():
     # 创建文件夹
-    directory = r"result/images/"
+    directory = r"result/images/illusts"
     if not os.path.exists(directory):
         os.makedirs(directory)
     pixiv_api = AppPixivAPI()
