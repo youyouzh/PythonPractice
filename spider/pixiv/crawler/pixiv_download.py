@@ -6,7 +6,7 @@ import datetime
 import time
 import threadpool
 from spider.pixiv.pixiv_api import AppPixivAPI
-from spider.pixiv.mysql.db import save_illustration, get_illustration, get_illustration_image, query_top_total_bookmarks
+from spider.pixiv.mysql.db import save_illustration, get_illustration, get_illustration_image, query_top_total_bookmarks, update_illustration_image
 
 CONFIG = json.load(open('config.json'))
 _USERNAME = CONFIG.get('username')
@@ -183,10 +183,14 @@ def download_by_illustration_id(pixiv_api, directory, illustration_id: int):
         print("The illustration image is not exist. illustration_id: " + str(illustration_id))
         return
     for illustration_image in illustration_images:
+        print("begin process illust_id: %s, image_url: %s" % illustration_image.illust_id,
+              illustration_image.image_url_origin)
         if illustration_image.image_url_origin is None:
             print("The illustration_image image_url_origin is none. illustration_id: " + str(illustration_id))
             continue
         download_task(pixiv_api, directory, illustration_image.image_url_origin)
+        illustration_image.process = 'DOWNLOADED'
+        update_illustration_image(illustration_image)
 
 
 # 下载指定地址的图片

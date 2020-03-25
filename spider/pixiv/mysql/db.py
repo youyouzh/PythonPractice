@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from spider.pixiv.pixiv_api import PixivError
 from .entity import Illustration, IllustrationTag, IllustrationImage, PixivUser
 
-engine = sql.create_engine('mysql+pymysql://uusama:uusama@localhost:3306/pixiv_2?charset=utf8mb4')
+engine = sql.create_engine('mysql+pymysql://uusama:uusama@localhost:3306/pixiv?charset=utf8mb4')
 session = sessionmaker(bind=engine)()
 
 
@@ -124,3 +124,7 @@ def get_illustration(illustration_id: int) -> Illustration:
 
 def get_illustration_image(illustration_id: int) -> [IllustrationImage]:
     return session.query(IllustrationImage).filter(IllustrationImage.illust_id == illustration_id).all()
+
+
+def update_illustration_image(illustration_image: IllustrationImage):
+    session.merge(illustration_image)
