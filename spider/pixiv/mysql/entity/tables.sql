@@ -102,5 +102,6 @@ create table illustration_image
     created_at              timestamp    default CURRENT_TIMESTAMP not null comment '记录创建时间',
     updated_at              timestamp    default CURRENT_TIMESTAMP not null comment '记录更新时间',
 	index `index_user_id` (`user_id`),
+	index `index_illust_id` (`illust_id`),
 	unique index `uk_image_url_large` (`image_url_large`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='插画下载地址信息';

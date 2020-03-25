@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import json
+import os
 import sqlalchemy as sql
 from sqlalchemy.orm import sessionmaker
 
@@ -11,7 +12,7 @@ engine = sql.create_engine('mysql+pymysql://uusama:uusama@localhost:3306/pixiv_2
 session = sessionmaker(bind=engine)()
 
 
-def save_illustration(illust: dict):
+def save_illustration(illust: dict) -> None:
     if not illust or 'id' not in illust or not illust.get('id'):
         raise PixivError('Illust is empty or valid.')
     if 'image_urls' not in illust:
@@ -67,7 +68,7 @@ def save_illustration(illust: dict):
     session.commit()
 
 
-def save_illustration_image(illust: dict, illustration: Illustration):
+def save_illustration_image(illust: dict, illustration: Illustration) -> dict:
     # 图片链接地址
     illustration_image = base_illustration_image(illustration)
 
@@ -97,10 +98,29 @@ def save_illustration_image(illust: dict, illustration: Illustration):
     return illustration_image
 
 
-def base_illustration_image(illustration: Illustration):
+def base_illustration_image(illustration: Illustration) -> dict:
     return {
         'user_id': illustration.user_id,
         'illust_id': illustration.id,
         'title': illustration.title,
         'page_index': 1
     }
+
+
+def query_top_total_bookmarks(count=100000) -> list:
+    cache_file = "cache.json"
+    if os.path.isfile(cache_file):
+        return json.load(open(cache_file))
+    results = session.query(Illustration.id, Illustration.total_bookmarks, Illustration.total_view)\
+        .order_by(Illustration.total_bookmarks.desc()).limit(count).all()
+    result = [dict(zip(v.keys(), v)) for v in results]
+    json.dump(result, open(cache_file, 'w'), ensure_ascii=False, indent=4)
+    return result
+
+
+def get_illustration(illustration_id: int) -> Illustration:
+    return session.query(Illustration).get(illustration_id)
+
+
+def get_illustration_image(illustration_id: int) -> [IllustrationImage]:
+    return session.query(IllustrationImage).filter(IllustrationImage.illust_id == illustration_id).all()
