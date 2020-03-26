@@ -5,8 +5,11 @@ import os
 import datetime
 import time
 import threadpool
+import re
+
 from spider.pixiv.pixiv_api import AppPixivAPI
-from spider.pixiv.mysql.db import save_illustration, get_illustration, get_illustration_image, query_top_total_bookmarks, update_illustration_image
+from spider.pixiv.mysql.db import save_illustration, get_illustration, get_illustration_image, Illustration,\
+    query_top_total_bookmarks, update_illustration_image, get_illustration_tag, IllustrationTag, IllustrationImage
 
 CONFIG = json.load(open('config.json'))
 _USERNAME = CONFIG.get('username')
@@ -14,10 +17,10 @@ _PASSWORD = CONFIG.get('password')
 _TEST_WRITE = False
 
 _REQUESTS_KWARGS = {
-  # 'proxies': {
-  #   'https': 'http://127.0.0.1:1087',
-  # },
-  # 'verify': False,       # PAPI use https, an easy way is disable requests SSL verify
+    # 'proxies': {
+    #   'https': 'http://127.0.0.1:1087',
+    # },
+    # 'verify': False,       # PAPI use https, an easy way is disable requests SSL verify
 }
 
 
@@ -174,38 +177,69 @@ def get_download_url_from_file():
 
 # 从本地数据查找URL，然后下载图片
 def download_by_illustration_id(pixiv_api, directory, illustration_id: int):
-    illustration = get_illustration(illustration_id)
+    illustration: Illustration = get_illustration(illustration_id)
     if illustration is None:
-        print("The illustration is not exist. illustration_id: " + str(illustration_id))
+        print('The illustration is not exist. illustration_id: ' + str(illustration_id))
         return
-    illustration_images = get_illustration_image(illustration_id)
+    illustration_images: [IllustrationImage] = get_illustration_image(illustration_id)
     if illustration_images is None or len(illustration_images) == 0:
-        print("The illustration image is not exist. illustration_id: " + str(illustration_id))
+        print('The illustration image is not exist. illustration_id: ' + str(illustration_id))
         return
+    if len(illustration_images) > 3:
+        # 超过3幅的画，大多是漫画类型，先不管
+        print('The illustration images are more than 3. illustration_id: ' + str(illustration_id))
+        return
+
+    # 按照收藏点赞人数分文件夹
+    directory += '/' + '-'.join(str(i) for i in get_10_20(illustration.total_bookmarks))
+
+    if illustration.r_18 is not None and illustration.r_18 == 1:
+        # R18放在别的文件夹
+        directory += "/r-18"
+
     for illustration_image in illustration_images:
         if illustration_image.image_url_origin is None or illustration_image.image_url_origin == '':
-            print("The illustration_image image_url_origin is none. illustration_id: " + str(illustration_id))
+            print('The illustration_image image_url_origin is none. illustration_id: ' + str(illustration_id))
             continue
-        print("begin process illust_id: %s, image_url: %s" % (illustration_image.illust_id,
+        # if illustration_image.process == 'DOWNLOADED':
+        #     print('The illustration_image has been downloaded. illustration_id: ' + str(illustration_id))
+        #     continue
+        print('begin process illust_id: %s, image_url: %s' % (illustration_image.illust_id,
                                                               illustration_image.image_url_origin))
-        download_task(pixiv_api, directory, illustration_image.image_url_origin)
+        download_task(pixiv_api, directory, illustration_image=illustration_image)
         illustration_image.process = 'DOWNLOADED'
         update_illustration_image(illustration_image)
 
 
 # 下载指定地址的图片
-def download_task(pixiv_api, directory, url):
-    print('download image begin: %s, url: %s' % (time.time(), url))
-    pixiv_api.download(url, '', directory, replace=False)
-    print('download image end: %s, url: %s' % (time.time(), url))
+def download_task(pixiv_api, directory, url=None, illustration_image: IllustrationImage = None):
+    begin_time = time.time()
+    name = None
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    if url is None or illustration_image is not None:
+        # 通过illustration_image下载
+        illustration_tags = get_illustration_tag(illustration_image.illust_id)
+        url = illustration_image.image_url_origin
+        basename = os.path.basename(url).split('.')
+        tags = list()
+        for illustration_tag in illustration_tags:
+            if illustration_tag.name not in tags:
+                tags.append(illustration_tag.name)
+        name = re.sub(r"[\\/?]+", '', '-'.join(tags))[0:150]
+        name = str(basename[0]) + '-' + name + '.' + str(basename[1])
+    try:
+        pixiv_api.download(url, '', directory, replace=False, name=name)
+    except (OSError, NameError):
+        print("save error, try simple name.")
+        pixiv_api.download(url, '', directory, replace=False, name=name)
+    print('download image end. cast: %f, url: %s' % (time.time() - begin_time, url))
 
 
 # 下载TOP收藏图片
 def download_top():
     # 创建文件夹
-    directory = r"result/images/illusts"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    directory = r"result/illusts"
     pixiv_api = AppPixivAPI()
     pixiv_api.login(_USERNAME, _PASSWORD)
     top_illusts = query_top_total_bookmarks()
@@ -247,10 +281,16 @@ def download_by_pool():
     pool.wait()
 
 
+def get_10_20(number: int):
+    figure = 0
+    remain = number
+    while remain // 10 > 0:
+        remain = remain // 10
+        figure += 1
+    return [remain * (10 ** figure), (remain + 1) * (10 ** figure)]
+
+
 if __name__ == '__main__':
     # crawl_rank_illust_info()
     # download_by_pool()
     download_top()
-
-
-

@@ -129,6 +129,10 @@ def get_illustration_image(illustration_id: int) -> [IllustrationImage]:
     return session.query(IllustrationImage).filter(IllustrationImage.illust_id == illustration_id).all()
 
 
+def get_illustration_tag(illustration_id: int) -> [IllustrationTag]:
+    return session.query(IllustrationTag).filter(IllustrationTag.illust_id == illustration_id).all()
+
+
 def update_illustration_image(illustration_image: IllustrationImage):
     session.merge(illustration_image)
     session.commit()
