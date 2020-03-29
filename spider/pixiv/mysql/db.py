@@ -136,3 +136,8 @@ def get_illustration_tag(illustration_id: int) -> [IllustrationTag]:
 def update_illustration_image(illustration_image: IllustrationImage):
     session.merge(illustration_image)
     session.commit()
+
+
+def update_illustration(illustration: Illustration):
+    session.mergei(illustration)
+    session.commit
