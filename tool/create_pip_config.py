@@ -7,7 +7,6 @@ import os
 PATH = f"C:{os.environ['HOMEPATH']}\\pip"
 FILE = 'pip.ini'
 
-# 国内源:郑州妇科医院哪家好 http://www.kd0371.com/
 # 新版ubuntu要求使用https源，要注意。
 DICTURL = {
     '清华': 'https://pypi.tuna.tsinghua.edu.cn/simple/',
