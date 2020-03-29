@@ -9,7 +9,8 @@ import re
 
 from spider.pixiv.pixiv_api import AppPixivAPI
 from spider.pixiv.mysql.db import save_illustration, get_illustration, get_illustration_image, Illustration,\
-    query_top_total_bookmarks, update_illustration_image, get_illustration_tag, IllustrationTag, IllustrationImage
+    query_top_total_bookmarks, update_illustration_image, get_illustration_tag, IllustrationTag, IllustrationImage, \
+    update_illustration
 
 CONFIG = json.load(open('config.json'))
 _USERNAME = CONFIG.get('username')
@@ -76,6 +77,7 @@ def download_user_illusts(user_id):
         next_url = str(json_result.next_url)
 
 
+# 按天排行下载
 def rank_of_day():
     pixiv_api = AppPixivAPI()
     json_result = pixiv_api.illust_ranking('day_male')
@@ -201,9 +203,9 @@ def download_by_illustration_id(pixiv_api, directory, illustration_id: int):
         if illustration_image.image_url_origin is None or illustration_image.image_url_origin == '':
             print('The illustration_image image_url_origin is none. illustration_id: ' + str(illustration_id))
             continue
-        # if illustration_image.process == 'DOWNLOADED':
-        #     print('The illustration_image has been downloaded. illustration_id: ' + str(illustration_id))
-        #     continue
+        if illustration_image.process == 'DOWNLOADED':
+            print('The illustration_image has been downloaded. illustration_id: ' + str(illustration_id))
+            continue
         print('begin process illust_id: %s, image_url: %s' % (illustration_image.illust_id,
                                                               illustration_image.image_url_origin))
         download_task(pixiv_api, directory, illustration_image=illustration_image)
@@ -216,6 +218,7 @@ def download_task(pixiv_api, directory, url=None, illustration_image: Illustrati
     begin_time = time.time()
     name = None
     if not os.path.exists(directory):
+        # 递归创建文件夹
         os.makedirs(directory)
     if url is None or illustration_image is not None:
         # 通过illustration_image下载
@@ -226,19 +229,19 @@ def download_task(pixiv_api, directory, url=None, illustration_image: Illustrati
         for illustration_tag in illustration_tags:
             if illustration_tag.name not in tags:
                 tags.append(illustration_tag.name)
-        name = re.sub(r"[\\/?]+", '', '-'.join(tags))[0:150]
+        # 过滤掉tag名称中的特殊字符，避免无法创建文件
+        name = re.sub(r"[\\/?*<>|\":]+", '', '-'.join(tags))[0:150]
         name = str(basename[0]) + '-' + name + '.' + str(basename[1])
     try:
         pixiv_api.download(url, '', directory, replace=False, name=name)
     except (OSError, NameError):
-        print("save error, try simple name.")
+        print("save error, try again.")
         pixiv_api.download(url, '', directory, replace=False, name=name)
     print('download image end. cast: %f, url: %s' % (time.time() - begin_time, url))
 
 
 # 下载TOP收藏图片
 def download_top():
-    # 创建文件夹
     directory = r"result/illusts"
     pixiv_api = AppPixivAPI()
     pixiv_api.login(_USERNAME, _PASSWORD)
@@ -281,6 +284,7 @@ def download_by_pool():
     pool.wait()
 
 
+# 获取整数倍 2324 -> [2000, 3000]
 def get_10_20(number: int):
     figure = 0
     remain = number
@@ -290,7 +294,35 @@ def get_10_20(number: int):
     return [remain * (10 ** figure), (remain + 1) * (10 ** figure)]
 
 
+# 更新本地整理好的插图
+def arrange():
+    # 目标文件夹
+    directory = r"result\illusts\score-3-无感"
+    score = 3   # 分数， 8：有用的教程，7：一级棒， 7：很棒， 5：还可以，4：有点色色，3：无感，2：不管了，1：什么鬼不要
+    if not os.path.exists(directory):
+        print('The directory is not exist. ' + directory)
+        return
+    file_names = os.listdir(directory)
+    for file_name in file_names:
+        # 获取目录或者文件的路径
+        if os.path.isdir(os.path.join(directory, file_name)):
+            continue
+        print('process file: ' + file_name)
+        # 提取 illust_id
+        illust_id = file_name.split('_')[0]
+        if not illust_id.isnumeric():
+            continue
+        illustration: Illustration = get_illustration(int(illust_id))
+        if illustration is None:
+            print('The illustration is not exist. illust_id: ' + illust_id)
+            continue
+        print('process illust_id: %s, set score to: %d ' % (illust_id, score))
+        illustration.score = score
+        # update_illustration(illustration)
+
+
 if __name__ == '__main__':
     # crawl_rank_illust_info()
     # download_by_pool()
     download_top()
+    arrange()
