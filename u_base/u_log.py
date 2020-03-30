@@ -497,22 +497,22 @@ def parse(log_line):
 
 
 if __name__ == '__main__':
-    u_base.log.debug('中文')
-    u_base.log.init_log_instance('test', u_base.log.INFO, './test.log', print_console=True)
+    u_base.u_log.debug('中文')
+    u_base.u_log.init_log_instance('test', u_base.u_log.INFO, './test.log', print_console=True)
     # test call init_log_instance twice
-    u_base.log.init_log_instance('test', u_base.log.INFO, './test.log', print_console=True)
+    u_base.u_log.init_log_instance('test', u_base.u_log.INFO, './test.log', print_console=True)
 
     # test log diff log level
-    u_base.log.info('test log info')
-    u_base.log.debug('test log debug')
-    u_base.log.info('中文')
-    u_base.log.error('test log error')
+    u_base.u_log.info('test log info')
+    u_base.u_log.debug('test log debug')
+    u_base.u_log.info('中文')
+    u_base.u_log.error('test log error')
 
-    u_base.log.re_init_log_instance(
-        're-test', u_base.log.INFO, './re.test.log',
-        u_base.log.ROTATION, 102400000, True
+    u_base.u_log.re_init_log_instance(
+        're-test', u_base.u_log.INFO, './re.test.log',
+        u_base.u_log.ROTATION, 102400000, True
     )
-    u_base.log.info('re:test info')
-    u_base.log.debug('re:test debug')
-    u_base.log.debug('re:中文')
+    u_base.u_log.info('re:test info')
+    u_base.u_log.debug('re:test debug')
+    u_base.u_log.debug('re:中文')
 

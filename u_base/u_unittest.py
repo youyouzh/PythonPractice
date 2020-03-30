@@ -9,7 +9,7 @@ import os
 import sys
 import traceback
 
-from u_base import log
+from u_base import u_log
 from u_base import u_exception
 
 __all__ = [
@@ -35,7 +35,7 @@ def _log_message(message):
     :param message: message
     """
     try:
-        log.backtrace_critical(message, 3)
+        u_log.backtrace_critical(message, 3)
     except Exception:
         pass
 
@@ -340,13 +340,13 @@ class CUTCase(object):
         """
         self._result = False
         if is_debug:
-            debuglevel = log.DEBUG
+            debuglevel = u_log.DEBUG
         else:
-            debuglevel = log.INFO
+            debuglevel = u_log.INFO
 
-        log.init_log_instance(
+        u_log.init_log_instance(
             'test_case', debuglevel,
-            logfile, log.ROTATION, 5242880, log_stdout
+            logfile, u_log.ROTATION, 5242880, log_stdout
         )
 
     def setup(self):

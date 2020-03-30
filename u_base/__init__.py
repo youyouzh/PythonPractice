@@ -3,11 +3,11 @@
 
 from . import u_platform
 from . import u_exception
-from . import log
+from . import u_log
 from . import version
 from . import u_time
-from . import unittest
+from . import u_unittest
 
 __all__ = [
-    'u_platform', 'u_exception', 'log', 'version', 'u_time', 'unittest'
+    'u_platform', 'u_exception', 'u_log', 'version', 'u_time', 'u_unittest'
 ]
