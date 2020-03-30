@@ -1,4 +1,38 @@
-## u_base
+## 使用库说明
+
+环境需要在`Python3.6`以上，只在`Windows x64`位系统性校验可行，需安装下面的包
+
+- `wheel`: 常用的python包管理工具
+- `Pillow`： 图片处理库，包含PIL，[Document](https://pillow.readthedocs.io/en/stable/installation.html)
+  - 64位Windows直接安装PIL会报错： Could not find a version that satisfies the requirement PIL
+- `requests`: 网络请求库，[Document](https://requests.readthedocs.io/en/master/)
+- `threadpool`: 线程池处理
+- `beautifulsoup4`: 网页Document解析，[Document](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
+- `pymysql`: mysql数据库驱动，[Document](https://pymysql.readthedocs.io/en/latest/)
+- `SQLAlchemy`: ORM数据库操作，依赖`wheel`包，[Document]((https://docs.sqlalchemy.org/en/13/intro.html))
+
+可以直接`pip install -r requirements.txt`安装所有依赖。
+
+## 文件结构说明
+
+```txt
+├── leetcode        # leetcode 刷题代码
+├── spider          # 爬虫代码
+│   ├── hacg        # hacg琉璃神社网页爬虫
+│   └── pixiv       # pixiv客户端API爬虫
+│       ├── crawler # 爬虫代码
+│       ├── mysql   # 图片数据库实体以及处理
+│       │   ├── entity   # pixiv图片和用户实体
+│       │   └── entity_example  # 爬虫示例数据
+│       └── pixiv_api    # pixiv api封装
+├── tool                 # 常用基本工具
+│   ├── file_process     # 文件处理
+│   └── xiaomi_note_backup
+└── u_base               # 基本工具库
+```
+
+### u_base
+
 常用的基本库。
 
 - log.py: logging 日志封装
@@ -6,42 +40,3 @@
 - u_platform.py: 平台相关函数
 - unittest.py: 单元测试函数
 - version.py: 关于本库的版本说明
-
-## tool
-
-常用的python实现的小工具，包含一些代码段等。
-
-- file_process
-  - file_move.py: 批量文件移动
-  - file_process.py: 文件遍历等操作
-  - rename.py: 批量文件重命名
-- xiaomi_note_backup: 小米个人笔记转存备份脚本
-- bt2url.py: BT种子转magnetURL
-- password_create.py: 随机密码生成
-- screenshot.py: 截屏
-- url2bt.py: magnet url 转BT种子
-
-### xiaomi_note_backup
-
-小米笔记导出到TXT文件。
-
-登录小米云个人用户中心
-https://i.mi.com/#note/home
-
-点击到便签那一栏目，展示所有便签内容。
-
-ctrl+S保存网页内容。
-
-找到保存的网页内容中的  saved_resource.html  文件夹，拷贝到Python脚步文件
-
-需要Python3运行环境，以及bs4的 Beautiful Soup 扩展
-运行Python脚步，自动备份成TXT。
-
-0000.txt为便签夹下所有便签写入一个文件
-TXT文件中包括日期信息和便签内容
-
-### password_create
-
-- password_seed: 设置生成密码保护的字符集
-- password_count: 指定生成的密码个数
-- password_length: 指定生成的密码长度

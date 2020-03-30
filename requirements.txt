@@ -1,0 +1,8 @@
+# Python3.6+
+wheel
+requests
+Pillow
+threadpool
+beautifulsoup4
+pymysql
+SQLAlchemy
