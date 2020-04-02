@@ -1,6 +1,48 @@
-## 使用库说明
+## 环境搭建
 
-环境需要在`Python3.6`以上，只在`Windows x64`位系统性校验可行，需安装下面的包
+### conda安装python
+
+强烈建议使用`Anaconda`进行`Python`环境搭建，[Anaconda下载地址](https://www.anaconda.com/download/)。
+
+选择Python3.7+以上的Windows版本，`Anaconda`安装完成以后，还需配置相应的环境变量，下面的目录请更换为自己的conda安装目录。
+
+- `C:\Devlope\anaconda3\Scripts`
+- `C:\Devlope\anaconda3\condabin`
+
+conda离线初见虚拟环境：`conda create -n uusama --clone base`，默认环境中有比较多常用的库，conda常用命令如下：
+
+- 虚拟环境列表： `conda env list`
+- 断网时创建： `conda create -n uusama --offline`
+- 复制创建： `conda create -n uusama --clone base`
+- 激活虚拟环境： `conda activate uusama`
+- 添加源： `conda config --add channels`
+- 移除源 `conda config --remove channels`
+
+conda安装很慢时，更换源：
+
+```bash
+# 清华的源
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+
+# 其他可选的源
+# 中科大的源
+conda config --add channels https://mirrors.ustc.edu.cn/anaconda/pkgs/free/
+# 阿里云的源
+conda config --add channels http://mirrors.aliyun.com/pypi/simple/
+
+conda config --set show_channel_urls yes
+```
+
+### Pycharm配置conda
+
+Pycharm中配置conda环境的方法：
+
+Setting -> Project -> Project Interpreter -> Add -> Conda Environment
+
+选择刚才创建的虚拟环境下`C:\Devlope\anaconda3\envs\uusama`的`Python.exe`即可。
+
+### 常用包功能说明
 
 - `wheel`: 常用的python包管理工具
 - `nose`: 非常方便的单元测试框架

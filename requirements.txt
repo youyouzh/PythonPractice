@@ -1,8 +1,15 @@
 # Python3.6+
+# for crawler base libs
 wheel
 requests
-Pillow
+pillow
 threadpool
 beautifulsoup4
 pymysql
 SQLAlchemy
+
+# for image classification, deep learning libs
+numpy
+scipy
+matplotlib
+opencv-python
