@@ -139,5 +139,5 @@ def update_illustration_image(illustration_image: IllustrationImage):
 
 
 def update_illustration(illustration: Illustration):
-    session.mergei(illustration)
+    session.merge(illustration)
     session.commit
