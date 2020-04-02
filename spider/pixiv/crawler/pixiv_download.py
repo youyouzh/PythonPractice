@@ -10,7 +10,7 @@ import re
 from spider.pixiv.pixiv_api import AppPixivAPI
 from spider.pixiv.mysql.db import save_illustration, get_illustration, get_illustration_image, Illustration,\
     query_top_total_bookmarks, update_illustration_image, get_illustration_tag, IllustrationTag, IllustrationImage, \
-    update_illustration
+    session
 
 CONFIG = json.load(open('config.json'))
 _USERNAME = CONFIG.get('username')
@@ -294,35 +294,7 @@ def get_10_20(number: int):
     return [remain * (10 ** figure), (remain + 1) * (10 ** figure)]
 
 
-# 更新本地整理好的插图
-def arrange():
-    # 目标文件夹
-    directory = r"result\illusts\score-3-无感"
-    score = 3   # 分数， 8：有用的教程，7：一级棒， 7：很棒， 5：还可以，4：有点色色，3：无感，2：不管了，1：什么鬼不要
-    if not os.path.exists(directory):
-        print('The directory is not exist. ' + directory)
-        return
-    file_names = os.listdir(directory)
-    for file_name in file_names:
-        # 获取目录或者文件的路径
-        if os.path.isdir(os.path.join(directory, file_name)):
-            continue
-        print('process file: ' + file_name)
-        # 提取 illust_id
-        illust_id = file_name.split('_')[0]
-        if not illust_id.isnumeric():
-            continue
-        illustration: Illustration = get_illustration(int(illust_id))
-        if illustration is None:
-            print('The illustration is not exist. illust_id: ' + illust_id)
-            continue
-        print('process illust_id: %s, set score to: %d ' % (illust_id, score))
-        illustration.score = score
-        # update_illustration(illustration)
-
-
 if __name__ == '__main__':
     # crawl_rank_illust_info()
     # download_by_pool()
     download_top()
-    arrange()
