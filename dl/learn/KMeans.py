@@ -64,4 +64,4 @@ def train(cluster_count=4):
 
 
 if __name__ == '__main__':
-    train()
+    train()  # 5个点时效果很差
