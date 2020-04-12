@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import numpy as np
+from PIL import Image
 
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag
 
@@ -35,19 +37,56 @@ def arrange():
         session.commit()
 
 
+# 是否指定的tag
+def is_special_tag(illust_path: str):
+    move_tags = ['wlop', 'wlop']
+    illust_filename = os.path.split(illust_path)[1]
+    tags = illust_filename.split('-')  # 从文件名分解得出包含的标签
+    for tag in tags:
+        for move_tag in move_tags:
+            if tag.find(move_tag) >= 0:
+                return True
+    return False
+
+
+# 是否黑白灰度图片
+def is_gray(illust_path: str):
+    """
+    1、纯彩色，只有白黑二色，白色RGB【R=G=B=255】，色黑【R=G=B=0】；
+    2、灰阶，RGB【R=G=B】；
+    色偏值 Diff = Max（|R-G|，|R-B|，|G-B|）；
+    彩色图片有所图片中最大的 Diff < 50；
+    :param illust_path: 图片地址
+    :return: True for gray picture
+    """
+    if not os.path.isfile(illust_path):
+        print('The file is not exist')
+        return False
+    illust_image = Image.open(illust_path)
+    if len(illust_image.getbands()) == 1:
+        return True
+    threshold = 30  # 判断阈值，图片3个通道间差的方差均值小于阈值则判断为灰度图
+    channel_r = np.array(illust_image.getchannel('R'), dtype=np.int)
+    channel_g = np.array(illust_image.getchannel('G'), dtype=np.int)
+    channel_b = np.array(illust_image.getchannel('B'), dtype=np.int)
+    diff_sum = (channel_r - channel_g).var() + (channel_g - channel_b).var() + (channel_b - channel_r).var()
+    return diff_sum <= threshold
+
+
 # 移动、统一、分类文件
-def collect_illusts():
-    base_directory = r"result\illusts"
+def collect_illusts(collect_function):
+    base_directory = r'..\crawler\result\illusts'
+    base_directory = os.path.abspath(base_directory)
     illust_directories = ['10000-20000', '100000-200000', '20000-30000', '200000-300000', '30000-40000',
                           '300000-400000', '40000-50000', '5000-6000', '50000-60000', '6000-7000', '60000-70000',
                           '7000-8000', '70000-80000', '8000-9000', '80000-90000', '9000-10000', '90000-100000']
-    move_target_directory = r"result\collect\wlop"
-    move_tags = ['wlop', 'wlop']
+    move_target_directory = r'..\crawler\result\collect\gray'
+    move_target_directory = os.path.abspath(move_target_directory)
     if not os.path.exists(move_target_directory):
         print('The directory is not exist. create: ' + move_target_directory)
         os.makedirs(move_target_directory)
-    is_move_file = False
     move_file_count = 0
+    max_move_count = 10
     for illust_directory in illust_directories:
         illust_directory = base_directory + '\\' + illust_directory
         illust_files = os.listdir(illust_directory)
@@ -55,19 +94,16 @@ def collect_illusts():
         for illust_file in illust_files:
             full_source_illust_file_path = os.path.join(illust_directory, illust_file)       # 完整的源图片路径
             full_target_illust_file_path = os.path.join(move_target_directory, illust_file)  # 移动目标路径
-            tags = illust_file.split('-')   # 从文件名分解得出包含的标签
-            for tag in tags:
-                for move_tag in move_tags:
-                    if tag.find(move_tag) >= 0:
-                        is_move_file = True
-            if is_move_file:
-                is_move_file = False
+            if collect_function(full_source_illust_file_path):
                 move_file_count += 1
                 print('find move file(%d): %s' % (move_file_count, full_source_illust_file_path))
                 os.replace(full_source_illust_file_path, full_target_illust_file_path)
+        if move_file_count >= max_move_count:
+            break
     print('----> total move file count: %d' % move_file_count)
 
 
 if __name__ == '__main__':
-    collect_illusts()
+    # collect_illusts(is_special_tag)
+    collect_illusts(is_gray)
     # arrange()
