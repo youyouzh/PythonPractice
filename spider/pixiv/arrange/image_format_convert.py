@@ -6,7 +6,7 @@ from PIL import Image
 
 
 if __name__ == '__main__':
-    path = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\images\oshie'
+    path = r'result\images\oshie'
     file_names = os.listdir(path)
     print('image file size: %d' % len(file_names))
     for filename in file_names:

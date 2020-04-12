@@ -29,7 +29,7 @@ def arrange():
             continue
         if illustration.score > 0:
             print("The illustration is exist. score: " + str(illustration.score))
-            # continue
+            continue
         print('process illust_id: %s, set score to: %d ' % (illust_id, score))
         illustration.score = score
         session.commit()
@@ -41,8 +41,8 @@ def collect_illusts():
     illust_directories = ['10000-20000', '100000-200000', '20000-30000', '200000-300000', '30000-40000',
                           '300000-400000', '40000-50000', '5000-6000', '50000-60000', '6000-7000', '60000-70000',
                           '7000-8000', '70000-80000', '8000-9000', '80000-90000', '9000-10000', '90000-100000']
-    move_target_directory = r"result\collect\百合"
-    move_tags = ['百合', '百合']
+    move_target_directory = r"result\collect\wlop"
+    move_tags = ['wlop', 'wlop']
     if not os.path.exists(move_target_directory):
         print('The directory is not exist. create: ' + move_target_directory)
         os.makedirs(move_target_directory)
@@ -69,5 +69,5 @@ def collect_illusts():
 
 
 if __name__ == '__main__':
-    # collect_illusts()
-    arrange()
+    collect_illusts()
+    # arrange()

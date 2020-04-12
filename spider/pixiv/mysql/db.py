@@ -110,7 +110,7 @@ def base_illustration_image(illustration: Illustration) -> dict:
 
 
 def query_top_total_bookmarks(count=100000) -> list:
-    cache_file = "cache.json"
+    cache_file = os.path.join(os.getcwd(), r"cache\top_total_bookmarks.json")
     if os.path.isfile(cache_file):
         return json.load(open(cache_file))
     results = session.query(Illustration.id, Illustration.total_bookmarks, Illustration.total_view)\
@@ -119,25 +119,3 @@ def query_top_total_bookmarks(count=100000) -> list:
     result = [dict(zip(v.keys(), v)) for v in results]
     json.dump(result, open(cache_file, 'w'), ensure_ascii=False, indent=4)
     return result
-
-
-def get_illustration(illustration_id: int) -> Illustration:
-    return session.query(Illustration).get(illustration_id)
-
-
-def get_illustration_image(illustration_id: int) -> [IllustrationImage]:
-    return session.query(IllustrationImage).filter(IllustrationImage.illust_id == illustration_id).all()
-
-
-def get_illustration_tag(illustration_id: int) -> [IllustrationTag]:
-    return session.query(IllustrationTag).filter(IllustrationTag.illust_id == illustration_id).all()
-
-
-def update_illustration_image(illustration_image: IllustrationImage):
-    session.merge(illustration_image)
-    session.commit()
-
-
-def update_illustration(illustration: Illustration):
-    session.merge(illustration)
-    session.commit
