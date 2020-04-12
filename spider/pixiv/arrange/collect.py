@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import numpy as np
+import cv2
 from PIL import Image
 
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag
@@ -62,15 +63,42 @@ def is_gray(illust_path: str):
     if not os.path.isfile(illust_path):
         print('The file is not exist')
         return False
-    illust_image = Image.open(illust_path)
+    threshold = 20  # 判断阈值，图片3个通道间差的方差均值小于阈值则判断为灰度图
+
+    try:
+        illust_image = Image.open(illust_path)
+    except Image.UnidentifiedImageError:
+        print("read file Error. " + illust_path)
+        return False
+    # 灰度图像
     if len(illust_image.getbands()) == 1:
         return True
-    threshold = 30  # 判断阈值，图片3个通道间差的方差均值小于阈值则判断为灰度图
     channel_r = np.array(illust_image.getchannel('R'), dtype=np.int)
     channel_g = np.array(illust_image.getchannel('G'), dtype=np.int)
     channel_b = np.array(illust_image.getchannel('B'), dtype=np.int)
     diff_sum = (channel_r - channel_g).var() + (channel_g - channel_b).var() + (channel_b - channel_r).var()
     return diff_sum <= threshold
+
+
+def read_rgb_by_pil(illust_path):
+    illust_image = Image.open(illust_path)
+    # 灰度图像
+    if len(illust_image.getbands()) == 1:
+        return True
+    channel_r = np.array(illust_image.getchannel('R'), dtype=np.int)
+    channel_g = np.array(illust_image.getchannel('G'), dtype=np.int)
+    channel_b = np.array(illust_image.getchannel('B'), dtype=np.int)
+    return channel_r, channel_g, channel_b
+
+
+def read_rgb_by_cv(illust_path):
+    # 因为window编码问题，不能使用 cv2.imread(illust_path), 会返回 None
+    # 此时返回的是一个ndarray
+    illust_image = cv2.imdecode(np.fromfile(illust_path, dtype=np.int), cv2.IMREAD_COLOR)
+    # if illust_image.type() == cv2.CV_8UC1:
+    #     return True
+    channel_b, channel_g, channel_r = cv2.split(illust_image)
+    return channel_r, channel_g, channel_b
 
 
 # 移动、统一、分类文件
@@ -86,12 +114,13 @@ def collect_illusts(collect_function):
         print('The directory is not exist. create: ' + move_target_directory)
         os.makedirs(move_target_directory)
     move_file_count = 0
-    max_move_count = 10
+    max_move_count = 1000
     for illust_directory in illust_directories:
         illust_directory = base_directory + '\\' + illust_directory
         illust_files = os.listdir(illust_directory)
         print('illust files size: %d' % len(illust_files))
         for illust_file in illust_files:
+            print('process file: ' + illust_file)
             full_source_illust_file_path = os.path.join(illust_directory, illust_file)       # 完整的源图片路径
             full_target_illust_file_path = os.path.join(move_target_directory, illust_file)  # 移动目标路径
             if collect_function(full_source_illust_file_path):
