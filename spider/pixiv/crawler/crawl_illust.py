@@ -10,7 +10,7 @@ import re
 from spider.pixiv.pixiv_api import AppPixivAPI
 from spider.pixiv.mysql.db import save_illustration
 
-CONFIG = json.load(open(r'config\config.json'))
+CONFIG = json.load(open(r'config\config.json', encoding='utf-8'))
 _USERNAME = CONFIG.get('username')
 _PASSWORD = CONFIG.get('password')
 
@@ -63,7 +63,7 @@ def crawl_rank_illust_info():
     max_page_count = 10
     is_r18 = False
     date_offset_file = 'offset-r-18.json' if is_r18 else 'offset.json'
-    date_offset_info = json.load(open(date_offset_file))
+    date_offset_info = json.load(open(date_offset_file, encoding='utf-8'))
 
     pixiv_api = AppPixivAPI()
     pixiv_api.login(_USERNAME, _PASSWORD)
@@ -114,7 +114,7 @@ def crawl_rank_illust_info():
             # 将爬取的时间和偏移持久化，即使中断下次也可以接着爬
             date_offset_info['date'] = str(query_date)
             date_offset_info['offset'] = next_url_options['offset']
-            json.dump(date_offset_info, open(date_offset_file, 'w'), ensure_ascii=False, indent=4)
+            json.dump(date_offset_info, open(date_offset_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
 
         # 爬取下一天的数据
         query_date = query_date + datetime.timedelta(days=1)

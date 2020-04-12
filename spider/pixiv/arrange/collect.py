@@ -3,6 +3,7 @@
 import os
 import numpy as np
 import cv2
+import json
 from PIL import Image
 
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag
@@ -109,6 +110,9 @@ def collect_illusts(collect_function):
                           '300000-400000', '40000-50000', '5000-6000', '50000-60000', '6000-7000', '60000-70000',
                           '7000-8000', '70000-80000', '8000-9000', '80000-90000', '9000-10000', '90000-100000']
     move_target_directory = r'..\crawler\result\collect\gray'
+    checked_file_path = r'..\crawler\result\collect\gray\checked_file.log'
+    checked_file_path = os.path.abspath(checked_file_path)
+    checked_files = json.load(open(checked_file_path, encoding='utf-8')) if os.path.isfile(checked_file_path) else []
     move_target_directory = os.path.abspath(move_target_directory)
     if not os.path.exists(move_target_directory):
         print('The directory is not exist. create: ' + move_target_directory)
@@ -120,13 +124,15 @@ def collect_illusts(collect_function):
         illust_files = os.listdir(illust_directory)
         print('illust files size: %d' % len(illust_files))
         for illust_file in illust_files:
-            print('process file: ' + illust_file)
             full_source_illust_file_path = os.path.join(illust_directory, illust_file)       # 完整的源图片路径
             full_target_illust_file_path = os.path.join(move_target_directory, illust_file)  # 移动目标路径
-            if collect_function(full_source_illust_file_path):
+            print('process file: ' + illust_file)
+            if full_source_illust_file_path not in checked_files and collect_function(full_source_illust_file_path):
                 move_file_count += 1
                 print('find move file(%d): %s' % (move_file_count, full_source_illust_file_path))
                 os.replace(full_source_illust_file_path, full_target_illust_file_path)
+            checked_files.append(full_source_illust_file_path)
+            json.dump(checked_files, open(checked_file_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
         if move_file_count >= max_move_count:
             break
     print('----> total move file count: %d' % move_file_count)

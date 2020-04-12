@@ -112,10 +112,10 @@ def base_illustration_image(illustration: Illustration) -> dict:
 def query_top_total_bookmarks(count=100000) -> list:
     cache_file = os.path.join(os.getcwd(), r"cache\top_total_bookmarks.json")
     if os.path.isfile(cache_file):
-        return json.load(open(cache_file))
+        return json.load(open(cache_file, encoding='utf-8'))
     results = session.query(Illustration.id, Illustration.total_bookmarks, Illustration.total_view)\
         .filter(Illustration.type == 'illust')\
         .order_by(Illustration.total_bookmarks.desc()).limit(count).all()
     result = [dict(zip(v.keys(), v)) for v in results]
-    json.dump(result, open(cache_file, 'w'), ensure_ascii=False, indent=4)
+    json.dump(result, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     return result
