@@ -7,6 +7,7 @@ import json
 from PIL import Image
 
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag
+from spider.pixiv.arrange.illust_file import read_file_as_list
 
 
 # 更新本地整理好的插图
@@ -64,16 +65,20 @@ def is_gray(illust_path: str):
     if not os.path.isfile(illust_path):
         print('The file is not exist')
         return False
-    threshold = 20  # 判断阈值，图片3个通道间差的方差均值小于阈值则判断为灰度图
+    # if int(os.path.split(illust_path)[1].split('_')[0]) != 64481817:
+    #     return False
+    threshold = 10  # 判断阈值，图片3个通道间差的方差均值小于阈值则判断为灰度图
 
     try:
         illust_image = Image.open(illust_path)
-    except Image.UnidentifiedImageError:
+    except (Image.UnidentifiedImageError, OSError) as e:
         print("read file Error. " + illust_path)
         return False
     # 灰度图像
-    if len(illust_image.getbands()) == 1:
+    if len(illust_image.getbands()) <= 2:
         return True
+
+    illust_image.thumbnail((200, 200))  # 缩放，整体颜色信息不变
     channel_r = np.array(illust_image.getchannel('R'), dtype=np.int)
     channel_g = np.array(illust_image.getchannel('G'), dtype=np.int)
     channel_b = np.array(illust_image.getchannel('B'), dtype=np.int)
@@ -81,10 +86,15 @@ def is_gray(illust_path: str):
     return diff_sum <= threshold
 
 
+# 线稿：黑色占比非常低
+def is_line(channel_r, channel_g, channel_b):
+    return False
+
+
 def read_rgb_by_pil(illust_path):
     illust_image = Image.open(illust_path)
     # 灰度图像
-    if len(illust_image.getbands()) == 1:
+    if len(illust_image.getbands()) <= 2:
         return True
     channel_r = np.array(illust_image.getchannel('R'), dtype=np.int)
     channel_g = np.array(illust_image.getchannel('G'), dtype=np.int)
@@ -109,14 +119,19 @@ def collect_illusts(collect_function):
     illust_directories = ['10000-20000', '100000-200000', '20000-30000', '200000-300000', '30000-40000',
                           '300000-400000', '40000-50000', '5000-6000', '50000-60000', '6000-7000', '60000-70000',
                           '7000-8000', '70000-80000', '8000-9000', '80000-90000', '9000-10000', '90000-100000']
+
     move_target_directory = r'..\crawler\result\collect\gray'
-    checked_file_path = r'..\crawler\result\collect\gray\checked_file.log'
-    checked_file_path = os.path.abspath(checked_file_path)
-    checked_files = json.load(open(checked_file_path, encoding='utf-8')) if os.path.isfile(checked_file_path) else []
     move_target_directory = os.path.abspath(move_target_directory)
     if not os.path.exists(move_target_directory):
         print('The directory is not exist. create: ' + move_target_directory)
         os.makedirs(move_target_directory)
+
+    checked_file_path = r'..\crawler\result\collect\gray\checked_file.txt'
+    checked_file_path = os.path.abspath(checked_file_path)
+    checked_files = read_file_as_list(checked_file_path)
+    checked_files = set(checked_files)
+    checked_file_handle = open(checked_file_path, 'w+', encoding='utf-8')
+
     move_file_count = 0
     max_move_count = 1000
     for illust_directory in illust_directories:
@@ -131,8 +146,7 @@ def collect_illusts(collect_function):
                 move_file_count += 1
                 print('find move file(%d): %s' % (move_file_count, full_source_illust_file_path))
                 os.replace(full_source_illust_file_path, full_target_illust_file_path)
-            checked_files.append(full_source_illust_file_path)
-            json.dump(checked_files, open(checked_file_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+            checked_file_handle.writelines(full_source_illust_file_path + '\n')
         if move_file_count >= max_move_count:
             break
     print('----> total move file count: %d' % move_file_count)
