@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from u_base import u_unittest
-from spider.pixiv.crawler.pixiv_download import get_10_20
+from spider.pixiv.crawler.download import get_10_20
 
 
 def test_get_10_20():
