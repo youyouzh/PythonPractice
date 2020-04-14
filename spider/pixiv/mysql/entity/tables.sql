@@ -58,6 +58,7 @@ create table illustration
     is_muted                tinyint(1)   default 0                 not null,
     r_18                    tinyint(1)   default 0                 not null comment '是否成人（18禁）',
     score                   tinyint(1)   default 0                 not null comment '自己评分，数字越大评分越高，有评分的都是下载过校验过的',
+    tag                     varchar(64)  default ''                not null comment '手动标记的tag',
     total_comments          int          default 0                 not null comment '总评论数',
     tools                   varchar(100) default ''                not null comment '使用的绘制工具',
     image_url_square_medium varchar(255) default ''                not null comment '小图片地址',

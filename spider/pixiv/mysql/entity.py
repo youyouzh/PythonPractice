@@ -30,6 +30,7 @@ class Illustration(BaseModel):
     is_muted = Column(TINYINT(1), nullable=False, server_default=text("'0'"))
     r_18 = Column(TINYINT(1), nullable=False, server_default=text("'0'"))
     score = Column(TINYINT(1), nullable=False, server_default=text("'0'"))
+    tag = Column(String(64), nullable=False, server_default=text("''"))
     total_comments = Column(INTEGER(11), nullable=False, server_default=text("'0'"))
     tools = Column(String(100), nullable=False, server_default=text("''"))
     image_url_square_medium = Column(String(255), nullable=False, server_default=text("''"))
