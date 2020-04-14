@@ -8,11 +8,24 @@ from spider.pixiv.mysql.db import session, Illustration, IllustrationTag
 from spider.pixiv.arrange.illust_file import read_file_as_list, collect_illust, get_all_image_file_path
 
 
+__all__ = [
+    'update_illust_tag',
+    'is_special_tag',
+    'is_gray',
+    'is_small',
+    'collect_illusts'
+]
+
+
 # 更新本地整理好的插图
-def update_illust_score():
-    # 目标文件夹
-    directory = r"result\collect\初音未来"
-    score = 5   # 分数， 8：有用的教程，7：一级棒， 7：很棒， 5：还可以，4：有点色色，3：无感，2：不管了，1：什么鬼不要
+def update_illust_tag(directory, tag):
+    """
+    将某个文件夹下的所有文件在illust数据库中的记录标记score值
+    :param directory: 目标文件夹
+    :param tag: 某个类型的标记名称
+    :param tag: 分数， 8：有用的教程，7：一级棒， 7：很棒， 5：还可以，4：有点色色，3：无感，2：不管了，1：什么鬼不要
+    :return:
+    """
     if not os.path.exists(directory):
         print('The directory is not exist. ' + directory)
         return
@@ -33,8 +46,8 @@ def update_illust_score():
         if illustration.score > 0:
             print("The illustration is exist. score: " + str(illustration.score))
             continue
-        print('process illust_id: %s, set score to: %d ' % (illust_id, score))
-        illustration.score = score
+        print('process illust_id: %s, set tag to: %s ' % (illust_id, tag))
+        illustration.tag = tag
         session.commit()
 
 
@@ -108,6 +121,7 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
 
 
 if __name__ == '__main__':
-    collect_illusts('small', is_small, 10000)
+    # collect_illusts('small', is_small, 10000)
     # collect_illust_by_collect_function(is_gray)
-    # update_illust_score()
+    target_directory = r'..\crawler\result\collect\small'
+    update_illust_tag(target_directory, 'small')
