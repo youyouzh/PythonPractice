@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag
-from spider.pixiv.arrange.illust_file import read_file_as_list, collect_illust, get_all_image_file_path
+from spider.pixiv.arrange.illust_file import read_file_as_list, collect_illust, get_all_image_file_path, get_illust_id
 
 
 __all__ = [
@@ -52,7 +52,7 @@ def update_illust_tag(directory, tag):
 
 
 # 是否指定的tag
-def is_special_tag(illust_path: str):
+def is_special_tag(illust_path: str) -> bool:
     move_tags = ['wlop', 'wlop']
     illust_filename = os.path.split(illust_path)[1]
     tags = illust_filename.split('-')  # 从文件名分解得出包含的标签
@@ -64,7 +64,7 @@ def is_special_tag(illust_path: str):
 
 
 # 是否黑白灰度图片
-def is_gray(illust_path: str):
+def is_gray(illust_path: str) -> bool:
     """
     1、纯彩色，只有白黑二色，白色RGB【R=G=B=255】，色黑【R=G=B=0】；
     2、灰阶，RGB【R=G=B】；
@@ -98,9 +98,52 @@ def is_gray(illust_path: str):
 
 
 # 是否图片太小
-def is_small(illust_path: str):
+def is_small(illust_path: str) -> bool:
     min_image_size = 1e5  # 小于100k的文件
     return os.path.getsize(illust_path) <= min_image_size
+
+
+# 提取某个文件夹下面收藏TOP的图片
+def extract_top(illust_path: str, count: int):
+    if not os.path.isdir(illust_path):
+        print('The path is not exist.', illust_path)
+        return
+    illust_files = os.listdir(illust_path)
+    print('The illust size is:', len(illust_files))
+    top_directory = os.path.join(illust_path, 'top')
+    if not os.path.isdir(top_directory):
+        os.makedirs(top_directory)
+
+    illustrations: [Illustration] = []
+    for illust_file in illust_files:
+        if os.path.isdir(illust_file):
+            print('The file is directory.', illust_file)
+            continue
+        illust_id = get_illust_id(illust_file)
+        if illust_id <= 0:
+            print('The illust_id is is not exist. ', illust_file)
+            continue
+        illustrations.append(session.query(Illustration).get(illust_id))
+    illustrations.sort(key=lambda x: x.total_bookmarks, reverse=True)
+    illustrations = illustrations[:count]
+    top_illust_ids = set(x.id for x in illustrations)
+    print('The top illust ids is: ', top_illust_ids)
+    for illust_file in illust_files:
+        if get_illust_id(illust_file) in top_illust_ids:
+            print('ready move top file: ', illust_file)
+            source_file_path = os.path.join(illust_path, illust_file)
+            source_file_path = os.path.abspath(source_file_path)
+            move_target_path = os.path.join(top_directory, illust_file)
+            move_target_path = os.path.abspath(move_target_path)
+            print('move file: %s --> %s' % (source_file_path, move_target_path))
+            os.replace(source_file_path, move_target_path)
+
+
+# 图片是否太长
+def is_too_long(illust_path: str) -> bool:
+    illust_image = Image.open(illust_path)
+    width, height = illust_image.size
+    return height >= width * 3
 
 
 # 移动、统一、分类文件
@@ -121,7 +164,8 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
 
 
 if __name__ == '__main__':
-    # collect_illusts('small', is_small, 10000)
+    # collect_illusts('too_long', is_too_long, 1000)
+    target_directory = r'..\crawler\result\collect\风景'
+    # update_illust_tag(target_directory, 'too_long')
     # collect_illust_by_collect_function(is_gray)
-    target_directory = r'..\crawler\result\collect\small'
-    update_illust_tag(target_directory, 'small')
+    extract_top(target_directory, 20)
