@@ -15,7 +15,7 @@ class BasePixivAPI(object):
     client_id = 'MOBrBDS8blbauoSck0ZfDbtuzpyT'
     client_secret = 'lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj'
     hash_secret = '28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c'
-    response_back_file = r'response.json'
+    response_back_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'token.json')
 
     access_token = None
     user_id = 0
@@ -90,7 +90,6 @@ class BasePixivAPI(object):
         """Login with password, or use the refresh_token to acquire a new bearer token"""
         if os.path.isfile(self.response_back_file) and self.refresh_token is None:
             # try to read access_token from file when login.
-            print("read token from file: " + self.response_back_file)
             return self.extract_token(json.load(open(self.response_back_file)))
         local_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+00:00')
         headers = {
