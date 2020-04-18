@@ -17,18 +17,17 @@ __all__ = [
     'backtrace_critical'
 ]
 
-
 import os
 import re
 import sys
 import logging
+import time
 import threading
 from logging import handlers
 
 import u_base
 from u_base import u_exception
 from u_base import u_platform
-
 
 ROTATION = 0
 INFINITE = 1
@@ -42,6 +41,7 @@ INFO = logging.INFO
 WARNING = logging.WARNING
 ERROR = logging.ERROR
 CRITICAL = logging.CRITICAL
+MIN_LEVEL = logging.DEBUG
 
 # global logging instance name
 G_INITED_LOGGER = []
@@ -152,6 +152,18 @@ def set_log_level(level):
     logger_instance.getlogger().setLevel(level)
 
 
+# 日志等级过滤
+class MaxLevelFilter(logging.Filter):
+    """Filters (lets through) all messages with level < LEVEL"""
+    def __init__(self, level):
+        super().__init__()
+        self.level = level
+
+    def filter(self, record):
+        # "<" instead of "<=": since logger.setLevel is inclusive, this should be exclusive
+        return record.levelno < self.level
+
+
 @_Singleton
 class _LoggerInstance(object):
     """
@@ -244,16 +256,29 @@ class _LoggerInstance(object):
         # log format
         formatter = logging.Formatter(
             '%(levelname)s:\t %(asctime)s * '
-            '[%(process)d:%(thread)x] [%(filename)s:%(lineno)s] %(message)s'
+            '[%(process)d:%(thread)x] [%(filename)s:%(lineno)s]\t %(message)s'
         )
 
         # print to console
         if print_console:
             info('print_console enabled, will print to stdout')
-            stream_handler = logging.StreamHandler()
-            stream_handler.setLevel(log_level)
-            stream_handler.setFormatter(formatter)
-            self._logger_instance.addHandler(stream_handler)
+            # 避免默认basicConfig已经注册了root的StreamHandler，会重复输出日志，先移除掉
+            for handler in logging.getLogger().handlers:
+                if handler.name is None and isinstance(handler, logging.StreamHandler):
+                    logging.getLogger().removeHandler(handler)
+            # DEBUG INFO 输出到 stdout
+            stdout_handler = logging.StreamHandler(sys.stdout)
+            stdout_handler.setFormatter(formatter)
+            stdout_handler.setLevel(MIN_LEVEL)
+            stdout_handler.addFilter(MaxLevelFilter(WARNING))
+
+            # WARNING 以上输出到 stderr
+            stderr_handler = logging.StreamHandler(sys.stderr)
+            stderr_handler.setFormatter(formatter)
+            stderr_handler.setLevel(max(log_level, WARNING))
+
+            self._logger_instance.addHandler(stdout_handler)
+            self._logger_instance.addHandler(stderr_handler)
 
         # set RotatingFileHandler
         rf_handler = None
@@ -496,6 +521,18 @@ def parse(log_line):
         return None
 
 
+def init_default_log(name='output'):
+    # 初始化log
+    log_path = os.path.join(os.getcwd(), 'log')
+    if not os.path.isdir(log_path):
+        os.makedirs(log_path)
+    log_path = os.path.join(log_path,
+                            'output-' + time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time())) + '.log')
+    init_log_instance(name, INFO, log_path, print_console=True)
+
+
+init_default_log()
+
 if __name__ == '__main__':
     u_base.u_log.debug('中文')
     u_base.u_log.init_log_instance('test', u_base.u_log.INFO, './test.log', print_console=True)
@@ -506,7 +543,7 @@ if __name__ == '__main__':
     u_base.u_log.info('test log info')
     u_base.u_log.debug('test log debug')
     u_base.u_log.info('中文')
-    u_base.u_log.error('test log error')
+    u_base.u_log.error('test log error. {id}'.format(id=12))
 
     u_base.u_log.re_init_log_instance(
         're-test', u_base.u_log.INFO, './re.test.log',
@@ -515,4 +552,3 @@ if __name__ == '__main__':
     u_base.u_log.info('re:test info')
     u_base.u_log.debug('re:test debug')
     u_base.u_log.debug('re:中文')
-
