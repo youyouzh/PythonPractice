@@ -3,13 +3,19 @@
 import json
 import os
 import sqlalchemy as sql
+import pymysql
+import warnings
 from sqlalchemy.orm import sessionmaker
 
+import u_base.u_log as log
 from spider.pixiv.pixiv_api import PixivError
 from .entity import Illustration, IllustrationTag, IllustrationImage, PixivUser
 
 engine = sql.create_engine('mysql+pymysql://uusama:uusama@localhost:3306/pixiv?charset=utf8mb4')
 session = sessionmaker(bind=engine)()
+
+# 忽略掉mysql执行insert ignore时的警告信息
+warnings.filterwarnings('ignore', category=pymysql.Warning)
 
 
 def save_illustration(illust: dict) -> None:
