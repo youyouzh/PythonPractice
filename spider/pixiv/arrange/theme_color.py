@@ -8,6 +8,7 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
+import u_base.u_log as log
 from spider.pixiv.arrange.illust_file import get_illust_file_path, collect_illust, get_all_image_file_path
 
 
@@ -43,8 +44,7 @@ def show_by_illust_id(illust_id: int):
     illust_path = get_illust_file_path(7996295)
     illust_image = Image.open(illust_path)
     illust_pixel_matrix = np.array(illust_image)
-    print("illust path: ", illust_path)
-    print("pixel shape: ", illust_pixel_matrix.shape)
+    log.info("illust path: {}, pixel shape: {}".format(illust_path, illust_pixel_matrix.shape))
     collect_illust('temp', illust_path)
 
     plt.figure('Image')
@@ -68,7 +68,7 @@ def extract(illust_path: str):
     max_color = 5
     illust_image = Image.open(illust_path)
     illust_pixel_data = np.array(illust_image)
-    print(illust_pixel_data.shape)
+    log.info(illust_pixel_data.shape)
 
     # 展开所有像素点
     height, width, pixel = illust_pixel_data.shape
@@ -79,7 +79,7 @@ def extract(illust_path: str):
     km.fit(pixel_data)
     themes = np.array(km.cluster_centers_, dtype=np.int)
     # themes = np.array([[43, 62, 82], [247, 226, 218], [82, 178, 177], [189, 137, 139], [178, 219, 204]])
-    print(themes)
+    log.info(themes)
     show([illust_pixel_data], [themes])
     return themes
 
@@ -105,22 +105,45 @@ def read_rgb_by_cv(illust_path):
     return channel_r, channel_g, channel_b
 
 
-def check_too_height_illust():
-    """
-    检查特别高的插画
-    :return:
-    """
-    illust_paths = get_all_image_file_path()
-    for illust_path in illust_paths:
-        if os.path.getsize(illust_path) < 1e5:
-            # 小于100kb的文件
-            print('The file is too small.', illust_path)
-            continue
-        illust_image = Image.open(illust_path)
-        width, height = illust_image.size
-        if height >= width * 3:
-            print(illust_path, width, height)
+def hsv_kmeans(image):
+    # hsv空间是圆锥体，不能用KMeans聚合
+    height, width, channel = image.shape
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    hsv = hsv.reshape((height * width, channel))
+
+    log.info('begin k-means')
+    cluster_count = 4
+    km = KMeans(n_clusters=cluster_count)
+    km.fit(hsv)
+    themes = np.array(km.cluster_centers_, dtype=np.uint8)  # 必须是 np.uint8 类型
+    log.info('end k-means, clusters is: {}'.format(themes))
+    themes = themes.reshape((1, cluster_count, 3))  # 必须转为三维才能进行 cvtColor
+    themes = cv2.cvtColor(themes, cv2.COLOR_HSV2RGB)
+    themes = themes.reshape((cluster_count, 3))
+    log.info(themes)
+    return themes
 
 
 if __name__ == '__main__':
-    check_too_height_illust()
+    illust_id = 38986652
+    illust_path = get_illust_file_path(illust_id)
+    illust_image = cv2.imdecode(np.fromfile(illust_path, dtype=np.int), cv2.IMREAD_COLOR)
+
+    # 图片压缩
+    log.info('begin resize image')
+    height, width, _ = illust_image.shape
+    base_height = 256
+    resize_image = cv2.resize(illust_image, (int(width * base_height / height), base_height))
+    height, width, channel = resize_image.shape
+
+    # 用KMeans聚合
+    log.info('begin k-means')
+    cluster_count = 2
+    resize_image = resize_image.reshape((height * width, channel))
+    km = KMeans(n_clusters=cluster_count)
+    km.fit(resize_image)
+    themes = np.array(km.cluster_centers_, dtype=np.uint8)  # 必须是 np.uint8 类型
+    log.info(themes)
+
+    # 转成RGB并显示图片
+    show([illust_image], [themes])

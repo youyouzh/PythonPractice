@@ -3,6 +3,7 @@
 import os
 import numpy as np
 from PIL import Image
+import u_base.u_log as log
 
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag
 from spider.pixiv.arrange.illust_file import read_file_as_list, collect_illust, get_all_image_file_path, get_illust_id
@@ -27,26 +28,26 @@ def update_illust_tag(directory, tag):
     :return:
     """
     if not os.path.exists(directory):
-        print('The directory is not exist. ' + directory)
+        log.error('The directory is not exist: {}'.format(directory))
         return
     file_names = os.listdir(directory)
     for file_name in file_names:
         # 获取目录或者文件的路径
         if os.path.isdir(os.path.join(directory, file_name)):
             continue
-        print('process file: ' + file_name)
+        log.info('process file: ' + file_name)
         # 提取 illust_id
         illust_id = file_name.split('_')[0]
         if not illust_id.isnumeric():
             continue
         illustration: Illustration = session.query(Illustration).get(int(illust_id))
         if illustration is None:
-            print('The illustration is not exist. illust_id: ' + illust_id)
+            log.info('The illustration is not exist. illust_id: {}'.format(illust_id))
             continue
         if illustration.score > 0:
-            print("The illustration is exist. score: " + str(illustration.score))
+            log.info("The illustration is exist. score: " + str(illustration.score))
             continue
-        print('process illust_id: %s, set tag to: %s ' % (illust_id, tag))
+        log.info('process illust_id: {}, set tag to: {} '.format(illust_id, tag))
         illustration.tag = tag
         session.commit()
 
@@ -74,7 +75,7 @@ def is_gray(illust_path: str) -> bool:
     :return: True for gray picture
     """
     if not os.path.isfile(illust_path):
-        print('The file is not exist')
+        log.error('The file is not exist: {}'.format(illust_path))
         return False
     # if int(os.path.split(illust_path)[1].split('_')[0]) != 64481817:
     #     return False
@@ -83,7 +84,7 @@ def is_gray(illust_path: str) -> bool:
     try:
         illust_image = Image.open(illust_path)
     except (Image.UnidentifiedImageError, OSError) as e:
-        print("read file Error. " + illust_path)
+        log.error("read file Error. illust_path: {}".format(illust_path))
         return False
     # 灰度图像
     if len(illust_image.getbands()) <= 2:
@@ -106,36 +107,37 @@ def is_small(illust_path: str) -> bool:
 # 提取某个文件夹下面收藏TOP的图片
 def extract_top(illust_path: str, count: int):
     if not os.path.isdir(illust_path):
-        print('The path is not exist.', illust_path)
+        log.error('The illust path is not exist: {}'.format(illust_path))
         return
     illust_files = os.listdir(illust_path)
-    print('The illust size is:', len(illust_files))
+    log.info('The illust size is: {}'.format(len(illust_files)))
     top_directory = os.path.join(illust_path, 'top')
     if not os.path.isdir(top_directory):
+        log.info('create top directory: {}'.format(top_directory))
         os.makedirs(top_directory)
 
     illustrations: [Illustration] = []
     for illust_file in illust_files:
         if os.path.isdir(illust_file):
-            print('The file is directory.', illust_file)
+            log.info('The file is directory: {}'.format(illust_file))
             continue
         illust_id = get_illust_id(illust_file)
         if illust_id <= 0:
-            print('The illust_id is is not exist. ', illust_file)
+            log.error('The illust_id is is not exist: {}'.format(illust_file))
             continue
         illustrations.append(session.query(Illustration).get(illust_id))
     illustrations.sort(key=lambda x: x.total_bookmarks, reverse=True)
     illustrations = illustrations[:count]
     top_illust_ids = set(x.id for x in illustrations)
-    print('The top illust ids is: ', top_illust_ids)
+    log.info('The top illust ids is: {}'.format(top_illust_ids))
     for illust_file in illust_files:
         if get_illust_id(illust_file) in top_illust_ids:
-            print('ready move top file: ', illust_file)
+            log.info('ready move top file: {}'.format(illust_file))
             source_file_path = os.path.join(illust_path, illust_file)
             source_file_path = os.path.abspath(source_file_path)
             move_target_path = os.path.join(top_directory, illust_file)
             move_target_path = os.path.abspath(move_target_path)
-            print('move file: %s --> %s' % (source_file_path, move_target_path))
+            log.info('move file: {} --> {}'.format(source_file_path, move_target_path))
             os.replace(source_file_path, move_target_path)
 
 
@@ -153,14 +155,14 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
     collect_count = 0
     for illust_path in illust_paths:
         if not os.path.isfile(illust_path):
-            print('The file is not exist.', illust_path)
+            log.error('The file is not exist: {}'.format(illust_path))
             continue
         if collect_function(illust_path):
             collect_illust(collect_tag, illust_path)
             collect_count += 1
         if collect_count >= max_collect_count:
             break
-    print('----> total move file count: %d' % collect_count)
+    log.info('----> total move file count: {}'.format(collect_count))
 
 
 if __name__ == '__main__':

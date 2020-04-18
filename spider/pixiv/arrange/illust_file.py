@@ -3,6 +3,7 @@
 """
 
 import os
+import u_base.u_log as log
 
 
 __all__ = [
@@ -21,6 +22,7 @@ def read_file_as_list(file_path: str) -> list:
     :return:
     """
     if not os.path.isfile(file_path):
+        log.warn('The file is not exist. {}'.format(file_path))
         return []
     file_handle = open(file_path, 'r', encoding='utf-8')
     line = file_handle.readline()
@@ -30,6 +32,7 @@ def read_file_as_list(file_path: str) -> list:
         contents.add(line)
         line = file_handle.readline()
     file_handle.close()
+    log.info('read file end. list size: {}'.format(len(contents)))
     return list(contents)
 
 
@@ -38,7 +41,7 @@ def get_illust_id(illust_file_path: str) -> int:
     illust_id = illust_filename.split('_')[0]
     if illust_id.isdigit():
         return int(illust_id)
-    print('The illust file is not exist illust_id.')
+    log.warn('The illust_id is not error. illust_file: {}'.format(illust_file_path))
     return -1
 
 
@@ -51,11 +54,12 @@ def get_all_image_file_path() -> list:
     illust_list_file = os.path.abspath(illust_list_save_path)
     if os.path.isfile(illust_list_save_path):
         # 存在缓存文件直接使用缓存
+        log.info('read all image file from cache: {}'.format(illust_list_save_path))
         return read_file_as_list(illust_list_save_path)
 
     # 遍历目录
     if not os.path.isdir(os.path.split(illust_list_save_path)[0]):
-        print('create the cache directory.')
+        log.info('create the cache directory: {}'.format(illust_list_save_path))
         os.makedirs(os.path.split(illust_list_save_path)[0])
 
     illust_list_file_handle = open(illust_list_save_path, 'w+', encoding='utf-8')
@@ -67,7 +71,7 @@ def get_all_image_file_path() -> list:
     for illust_directory in illust_directories:
         illust_directory = base_directory + '\\' + illust_directory
         illust_files = os.listdir(illust_directory)
-        print('illust_directory: %s, illust files size: %d' % (illust_directory, len(illust_files)))
+        log.info('illust_directory: %s, illust files size: %d' % (illust_directory, len(illust_files)))
         for illust_file in illust_files:
             full_source_illust_file_path = os.path.join(illust_directory, illust_file)       # 完整的源图片路径
             full_source_illust_file_path = os.path.abspath(full_source_illust_file_path)
@@ -76,12 +80,12 @@ def get_all_image_file_path() -> list:
                 continue
             illust_file_paths.add(full_source_illust_file_path)
             illust_list_file_handle.writelines(full_source_illust_file_path + '\n')
-    print('The illust image file size: %d' % len(illust_file_paths))
+    log.info('The illust image file size: {}'.format(len(illust_file_paths)))
     # illust_list_file_handle.close()
     return list(illust_file_paths)
 
 
-def get_illust_file_path(illust_id: int):
+def get_illust_file_path(illust_id: int) -> str:
     """
     查询指定illust_id文件所在的地址
     :param illust_id: 给定的插图id
@@ -93,7 +97,7 @@ def get_illust_file_path(illust_id: int):
         current_illust_id = illust_filename.split('_')[0]
         if current_illust_id.isdigit() and int(current_illust_id) == illust_id:
             return illust_file_path
-    print("The illust file is not exist. illust_id: %d" % illust_id)
+    log.error("The illust file is not exist. illust_id: {}".format(illust_id))
     return None
 
 
@@ -107,7 +111,7 @@ def collect_illust(collect_name, source_illust_file_path):
     move_target_file_path = os.path.abspath(move_target_file_path)
     source_illust_file_path = os.path.abspath(source_illust_file_path)
     if os.path.isfile(source_illust_file_path):
-        print('move file from: %s ---> %s' % (source_illust_file_path, move_target_file_path))
+        log.info('move file from: {} ---> {}'.format(source_illust_file_path, move_target_file_path))
         os.replace(source_illust_file_path, move_target_file_path)
 
 
