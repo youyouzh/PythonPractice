@@ -11,7 +11,8 @@ __all__ = [
     'get_all_image_file_path',
     'get_illust_file_path',
     'get_illust_id',
-    'collect_illust'
+    'collect_illust',
+    'get_directory_illusts'
 ]
 
 
@@ -51,7 +52,7 @@ def get_all_image_file_path() -> list:
     :return: 图片路径列表
     """
     illust_list_save_path = r'cache\all_image_file.txt'
-    illust_list_file = os.path.abspath(illust_list_save_path)
+    illust_list_save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), illust_list_save_path)
     if os.path.isfile(illust_list_save_path):
         # 存在缓存文件直接使用缓存
         log.info('read all image file from cache: {}'.format(illust_list_save_path))
@@ -102,8 +103,12 @@ def get_illust_file_path(illust_id: int) -> str:
 
 
 def collect_illust(collect_name, source_illust_file_path):
-    move_target_directory = r'..\crawler\result\collect'
-    move_target_directory = os.path.join(move_target_directory, collect_name)
+    move_target_directory = collect_name
+    if not os.path.isdir(move_target_directory):
+        # 如果collect_name不是路径，收藏到默认路径
+        move_target_directory = r'..\crawler\result\collect'
+        move_target_directory = os.path.join(move_target_directory, collect_name)
+
     if not os.path.isdir(move_target_directory):
         os.makedirs(move_target_directory)
     move_target_file_path = os.path.join(move_target_directory, os.path.split(source_illust_file_path)[1])
@@ -115,5 +120,35 @@ def collect_illust(collect_name, source_illust_file_path):
         os.replace(source_illust_file_path, move_target_file_path)
 
 
+def get_directory_illusts(illust_directory) -> list:
+    illusts = []
+    if not os.path.isdir(illust_directory):
+        log.error('The illust directory is not exist: {}'.format(illust_directory))
+        return illusts
+    illust_files = os.listdir(illust_directory)
+    for illust_file in illust_files:
+        illust_file = os.path.join(illust_directory, illust_file)
+        if os.path.isdir(illust_file):
+            log.info('The file is directory: {}'.format(illust_file))
+            continue
+        illust_id = get_illust_id(illust_file)
+        if illust_id is None:
+            log.info('The file illust_id is None: {}'.format(illust_file))
+            continue
+        illusts.append({
+            'illust_id': illust_id,
+            'path': os.path.abspath(illust_file)
+        })
+    log.info('read all illusts success. size: {}'.format(len(illusts)))
+    return illusts
+
+
 if __name__ == '__main__':
-    get_all_image_file_path()
+    # get_all_image_file_path()
+    target_directory = r'..\crawler\result\collect\great'
+    illusts = get_directory_illusts(target_directory)
+    illust_ids = []
+    for illust in illusts:
+        illust_ids.append(illust['illust_id'])
+    log.info(illust_ids)
+
