@@ -197,7 +197,7 @@ def classify_main_color(illust_directory):
             log.warn('The illust has not main colors info. illust_id: {}'.format(illust_id))
             continue
         main_colors = illust_main_colors[str(illust_id)]
-        if min(main_colors[0]['color']) > 240 and min(main_colors[1]['color']) > 220:
+        if min(main_colors[0]['color']) > 220 and min(main_colors[1]['color']) > 200 and min(main_colors[2]['color']) > 200:
             # 主要颜色是白色
             log.info('white illust. collect: {}'.format(illust_id))
             collect_illust(collect_directory, illust_file['path'])
@@ -207,6 +207,6 @@ if __name__ == '__main__':
     log.info("begin process")
 
     target_directory = r'..\crawler\result\illusts\30000-40000'
-    # train_main_colors(target_directory)
-    classify_main_color(target_directory)
+    train_main_colors(target_directory)
+    # classify_main_color(target_directory)
 

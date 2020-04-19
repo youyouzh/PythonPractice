@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import numpy as np
+import json
 from PIL import Image
 import u_base.u_log as log
 
@@ -16,6 +17,10 @@ __all__ = [
     'is_small',
     'collect_illusts'
 ]
+
+
+# 用来缓存一批 illust_id
+cache_illust_ids = []
 
 
 # 更新本地整理好的插图
@@ -101,6 +106,33 @@ def is_small(illust_path: str) -> bool:
     return os.path.getsize(illust_path) <= min_image_size
 
 
+# 图片是否太长
+def is_too_long(illust_path: str) -> bool:
+    illust_image = Image.open(illust_path)
+    width, height = illust_image.size
+    return height >= width * 3
+
+
+# 是否指定的illust_id，用来提取某一个用户或者某一批插画
+def is_special_illust_ids(illust_path: str = None, **kwargs) -> bool:
+    user_id = kwargs.get('user_id')
+    if not user_id:
+        log.error('The user_id is empty.')
+        return False
+    cache_illust_ids_path = r'.\cache\\' + str(user_id) + '-illust-ids.json'
+    if not os.path.isfile(cache_illust_ids_path):
+        # 某个用户的illust_id
+        illust_ids = session.query(Illustration.id).filter(Illustration.user_id == user_id)\
+            .order_by(Illustration.total_bookmarks.desc()).all()
+        illust_ids = [x.id for x in illust_ids]
+        log.info('query user_id: {}, illust_ids: {}'.format(user_id, illust_ids))
+        json.dump(illust_ids, open(cache_illust_ids_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    else:
+        illust_ids = json.load(open(cache_illust_ids_path, 'r', encoding='utf-8'))
+    current_illust_id = get_illust_id(illust_path)
+    return current_illust_id in illust_ids
+
+
 # 提取某个文件夹下面收藏TOP的图片
 def extract_top(illust_path: str, count: int):
     if not os.path.isdir(illust_path):
@@ -138,15 +170,8 @@ def extract_top(illust_path: str, count: int):
             os.replace(source_file_path, move_target_path)
 
 
-# 图片是否太长
-def is_too_long(illust_path: str) -> bool:
-    illust_image = Image.open(illust_path)
-    width, height = illust_image.size
-    return height >= width * 3
-
-
 # 移动、统一、分类文件
-def collect_illusts(collect_tag='back', collect_function=None, max_collect_count=10):
+def collect_illusts(collect_tag='back', collect_function=None, max_collect_count=10, **kwargs):
     illust_paths = get_all_image_file_path()
 
     collect_count = 0
@@ -154,7 +179,7 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
         if not os.path.isfile(illust_path):
             log.error('The file is not exist: {}'.format(illust_path))
             continue
-        if collect_function(illust_path):
+        if collect_function(illust_path, **kwargs):
             collect_illust(collect_tag, illust_path)
             collect_count += 1
         if collect_count >= max_collect_count:
@@ -163,8 +188,9 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
 
 
 if __name__ == '__main__':
-    # collect_illusts('too_long', is_too_long, 1000)
-    target_directory = r'..\crawler\result\illusts\score-3-无感'
-    update_illust_tag(target_directory, 'ignore')
+    user_id = 55460411
+    collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
+    # target_directory = r'..\crawler\result\illusts\score-3-无感'
+    # update_illust_tag(target_directory, 'ignore')
     # collect_illust_by_collect_function(is_gray)
     # extract_top(target_directory, 20)

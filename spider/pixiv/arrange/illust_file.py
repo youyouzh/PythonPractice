@@ -66,9 +66,8 @@ def get_all_image_file_path() -> list:
     illust_list_file_handle = open(illust_list_save_path, 'w+', encoding='utf-8')
     illust_file_paths = set()
     base_directory = r'..\crawler\result\illusts'
-    illust_directories = ['10000-20000', '100000-200000', '20000-30000', '200000-300000', '30000-40000',
-                          '300000-400000', '40000-50000', '5000-6000', '50000-60000', '6000-7000', '60000-70000',
-                          '7000-8000', '70000-80000', '8000-9000', '80000-90000', '9000-10000', '90000-100000']
+    illust_directories = ['10000-20000', '20000-30000', '30000-40000', '40000-50000', '5000-6000',
+                          '6000-7000', '7000-8000', '8000-9000', '9000-10000']
     for illust_directory in illust_directories:
         illust_directory = base_directory + '\\' + illust_directory
         illust_files = os.listdir(illust_directory)
@@ -144,11 +143,5 @@ def get_directory_illusts(illust_directory) -> list:
 
 
 if __name__ == '__main__':
-    # get_all_image_file_path()
-    target_directory = r'..\crawler\result\collect\great'
-    illusts = get_directory_illusts(target_directory)
-    illust_ids = []
-    for illust in illusts:
-        illust_ids.append(illust['illust_id'])
-    log.info(illust_ids)
+    get_all_image_file_path()
 
