@@ -4,12 +4,14 @@ import os
 import numpy as np
 from PIL import Image
 import cv2
+import json
+import collections
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 import u_base.u_log as log
-from spider.pixiv.arrange.illust_file import get_illust_file_path, collect_illust, get_all_image_file_path
+from spider.pixiv.arrange.illust_file import get_illust_file_path, collect_illust, get_illust_id, get_directory_illusts
 
 
 def show(images, themes):
@@ -59,29 +61,37 @@ def show_by_illust_id(illust_id: int):
 #  [ 82 178 177]
 #  [189 137 139]
 #  [178 219 204]]
-def extract(illust_path: str):
+def rgb_kmeans(illust_path: str, show_image=False):
     """
-    提取指定图片的主题色
-    :param illust_path:
+    K-Means聚类图片的颜色
+    :param show_image: 是否显示训练效果
+    :param illust_path: 图片地址
     :return:
     """
     max_color = 5
     illust_image = Image.open(illust_path)
-    illust_pixel_data = np.array(illust_image)
-    log.info(illust_pixel_data.shape)
+    illust_image.thumbnail((200, 200))  # 缩放，整体颜色信息不变
+    illust_pixel_matrix = np.array(illust_image)
+    log.info('begin k-means. image shape: {}, image path: {}'.format(illust_pixel_matrix.shape, illust_path))
 
-    # 展开所有像素点
-    height, width, pixel = illust_pixel_data.shape
-    pixel_data = np.reshape(illust_pixel_data, (height * width, pixel))
+    # 展开所有像素点用于聚类
+    # 为了加快聚类速度，对图片进行缩放，主要颜色信息的分布基本没有变化
+    height, width, pixel = illust_pixel_matrix.shape
+    pixel_data = np.reshape(illust_pixel_matrix, (height * width, pixel))
 
     # KMeans 聚合像素，提取主题颜色
     km = KMeans(n_clusters=max_color)
     km.fit(pixel_data)
-    themes = np.array(km.cluster_centers_, dtype=np.int)
-    # themes = np.array([[43, 62, 82], [247, 226, 218], [82, 178, 177], [189, 137, 139], [178, 219, 204]])
-    log.info(themes)
-    show([illust_pixel_data], [themes])
-    return themes
+    clusters = np.array(km.cluster_centers_, dtype=np.int)
+    log.info('k-means end.')
+
+    # 每个聚类的数量
+    label_count = collections.Counter(km.labels_)
+    log.info('clusters: {}, label_count: {}'.format(clusters, dict(label_count)))
+
+    if show_image:
+        show([illust_pixel_matrix], [clusters])
+    return clusters, label_count
 
 
 def read_rgb_by_pil(illust_path):
@@ -101,6 +111,10 @@ def read_rgb_by_cv(illust_path):
     illust_image = cv2.imdecode(np.fromfile(illust_path, dtype=np.int), cv2.IMREAD_COLOR)
     # if illust_image.type() == cv2.CV_8UC1:
     #     return True
+    # height, width, _ = illust_image.shape
+    # base_height = 256
+    # resize_image = cv2.resize(illust_image, (int(width * base_height / height), base_height))
+    # height, width, channel = resize_image.shape
     channel_b, channel_g, channel_r = cv2.split(illust_image)
     return channel_r, channel_g, channel_b
 
@@ -124,26 +138,75 @@ def hsv_kmeans(image):
     return themes
 
 
+def train_main_colors(illust_directory):
+    log.info('begin train main colors.')
+    save_cache_file = r'.\cache\main_color.txt'
+    # save_cache_file_handle = open(save_cache_file, 'w+', encoding='utf-8')
+    illust_main_colors = {}
+    if os.path.isfile(save_cache_file):
+        illust_main_colors = json.load(open(save_cache_file, 'r', encoding='utf-8'))
+    illust_files = os.listdir(illust_directory)
+    for illust_file in illust_files:
+        illust_file = os.path.join(illust_directory, illust_file)
+        if os.path.isdir(illust_file):
+            log.info('The file is directory: {}'.format(illust_file))
+            continue
+        illust_id = get_illust_id(illust_file)
+        if illust_id is None:
+            log.info('The file illust_id is None: {}'.format(illust_file))
+            continue
+        if str(illust_id) in illust_main_colors:
+            log.info('The file has been trained: {}'.format(illust_file))
+            continue
+        clusters, label_count = rgb_kmeans(illust_file)
+        main_colors = []
+        for label in label_count:
+            main_colors.append({
+                'illust_id': illust_id,
+                'index': int(label),
+                'count': label_count[label],
+                'color': clusters[label].tolist()
+            })
+        main_colors.sort(key=lambda x: x['count'], reverse=True)
+        illust_main_colors[illust_id] = main_colors
+        json.dump(illust_main_colors, open(save_cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    log.info('end train main colors.')
+    return illust_main_colors
+
+
+def classify_main_color(illust_directory):
+    log.info('begin classify main colors.')
+    train_result_file = r'.\cache\main_color.txt'
+    collect_directory = r'..\crawler\result\illusts\30000-40000\white'
+    if not os.path.isdir(collect_directory):
+        os.makedirs(collect_directory)
+
+    if not os.path.isfile(train_result_file):
+        log.error('The train result file is not exist: {}'.format(train_result_file))
+        return
+    log.info('read train info finish.')
+    illust_main_colors = json.load(open(train_result_file, 'r', encoding='utf-8'))
+    for illust_id in illust_main_colors:
+        main_colors = illust_main_colors[illust_id]
+        main_colors.sort(key=lambda x: x['count'], reverse=True)
+
+    illust_files = get_directory_illusts(illust_directory)
+    for illust_file in illust_files:
+        illust_id = illust_file['illust_id']
+        if str(illust_id) not in illust_main_colors:
+            log.warn('The illust has not main colors info. illust_id: {}'.format(illust_id))
+            continue
+        main_colors = illust_main_colors[str(illust_id)]
+        if min(main_colors[0]['color']) > 240 and min(main_colors[1]['color']) > 220:
+            # 主要颜色是白色
+            log.info('white illust. collect: {}'.format(illust_id))
+            collect_illust(collect_directory, illust_file['path'])
+
+
 if __name__ == '__main__':
-    illust_id = 38986652
-    illust_path = get_illust_file_path(illust_id)
-    illust_image = cv2.imdecode(np.fromfile(illust_path, dtype=np.int), cv2.IMREAD_COLOR)
+    log.info("begin process")
 
-    # 图片压缩
-    log.info('begin resize image')
-    height, width, _ = illust_image.shape
-    base_height = 256
-    resize_image = cv2.resize(illust_image, (int(width * base_height / height), base_height))
-    height, width, channel = resize_image.shape
+    target_directory = r'..\crawler\result\illusts\30000-40000'
+    # train_main_colors(target_directory)
+    classify_main_color(target_directory)
 
-    # 用KMeans聚合
-    log.info('begin k-means')
-    cluster_count = 2
-    resize_image = resize_image.reshape((height * width, channel))
-    km = KMeans(n_clusters=cluster_count)
-    km.fit(resize_image)
-    themes = np.array(km.cluster_centers_, dtype=np.uint8)  # 必须是 np.uint8 类型
-    log.info(themes)
-
-    # 转成RGB并显示图片
-    show([illust_image], [themes])
