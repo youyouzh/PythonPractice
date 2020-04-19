@@ -115,17 +115,17 @@ def is_too_long(illust_path: str) -> bool:
 
 # 是否指定的illust_id，用来提取某一个用户或者某一批插画
 def is_special_illust_ids(illust_path: str = None, **kwargs) -> bool:
-    user_id = kwargs.get('user_id')
-    if not user_id:
-        log.error('The user_id is empty.')
+    if not kwargs.get('user_id') and not kwargs.get('illust_id'):
+        log.error('The user_id or illust_id is empty.')
         return False
+    user_id = kwargs.get('user_id')
     cache_illust_ids_path = r'.\cache\\' + str(user_id) + '-illust-ids.json'
     if not os.path.isfile(cache_illust_ids_path):
         # 某个用户的illust_id
         illust_ids = session.query(Illustration.id).filter(Illustration.user_id == user_id)\
             .order_by(Illustration.total_bookmarks.desc()).all()
         illust_ids = [x.id for x in illust_ids]
-        log.info('query user_id: {}, illust_ids: {}'.format(user_id, illust_ids))
+        log.info('query user_id: {}, illust_ids_size: {}'.format(user_id, len(illust_ids)))
         json.dump(illust_ids, open(cache_illust_ids_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     else:
         illust_ids = json.load(open(cache_illust_ids_path, 'r', encoding='utf-8'))
@@ -172,12 +172,13 @@ def extract_top(illust_path: str, count: int):
 
 # 移动、统一、分类文件
 def collect_illusts(collect_tag='back', collect_function=None, max_collect_count=10, **kwargs):
+    log.info('begin collect illusts. tag: {}, max_collect_count: {}'.format(collect_tag, max_collect_count))
     illust_paths = get_all_image_file_path()
 
     collect_count = 0
     for illust_path in illust_paths:
         if not os.path.isfile(illust_path):
-            log.error('The file is not exist: {}'.format(illust_path))
+            # log.warn('The file is not exist: {}'.format(illust_path))
             continue
         if collect_function(illust_path, **kwargs):
             collect_illust(collect_tag, illust_path)
@@ -187,9 +188,32 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
     log.info('----> total move file count: {}'.format(collect_count))
 
 
+def get_user_id_by_illust_id(illust_id: int) -> int:
+    illust: Illustration = session.query(Illustration).get(illust_id)
+    if not illust:
+        log.warn('The illust is not exist. illust_id: {}'.format(illust_id))
+        return 0
+    return illust.user_id
+
+
 if __name__ == '__main__':
-    user_id = 55460411
-    collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
+    illust_id = 60881929
+    # user_id = get_user_id_by_illust_id(illust_id)
+
+    user_ids = [
+        5375435,
+        4752417,
+        6996493,
+        258003,
+        648285,
+        4338012,
+        93360,
+        1067404,
+        7210261,
+        15305293, 1480420, 2650491, 6210796, 3869665, 5594793, 1854020, 333556, 1039353, 24359642, 871625, 9016, 17929545, 4265931, 292644, 1113943, 4889903, 2774175, 27517, 83739, 8252709, 465133, 4872213, 10509347, 1035047, 5476137, 12913304, 18340266, 76712, 14112962, 355065, 1864423, 22438, 464063, 1589657, 6662895, 2188232, 7038833, 1899477, 33333, 4754550, 4346822, 211515, 552160, 1055457, 4493551, 853087, 573302, 6957790, 75567, 22853292, 3684920, 4196200, 8189060, 1334928, 19880053, 772547, 1193008, 3316400, 177784, 74184, 1041194, 10669991, 2864095, 24517, 2159670, 194231, 191346, 1243903, 711257, 490219, 1226647, 11539, 512849, 758591, 3016, 3079252, 306422, 105026, 40222, 13379747, 22124330, 418969, 29362997, 1655331, 27207, 159905, 353613, 10618627, 6751, 883091]
+    for user_id in user_ids:
+        log.info('illust_id: {}, the user_id: {}'.format(illust_id, user_id))
+        collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
     # target_directory = r'..\crawler\result\illusts\score-3-无感'
     # update_illust_tag(target_directory, 'ignore')
     # collect_illust_by_collect_function(is_gray)

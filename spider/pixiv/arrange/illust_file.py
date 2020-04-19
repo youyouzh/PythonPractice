@@ -51,6 +51,7 @@ def get_all_image_file_path() -> list:
     获取所有的图片文件路径列表
     :return: 图片路径列表
     """
+    log.info('begin read all image file illusts')
     illust_list_save_path = r'cache\all_image_file.txt'
     illust_list_save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), illust_list_save_path)
     if os.path.isfile(illust_list_save_path):
@@ -67,9 +68,12 @@ def get_all_image_file_path() -> list:
     illust_file_paths = set()
     base_directory = r'..\crawler\result\illusts'
     illust_directories = ['10000-20000', '20000-30000', '30000-40000', '40000-50000', '5000-6000',
-                          '6000-7000', '7000-8000', '8000-9000', '9000-10000']
+                          '6000-7000', '7000-8000', '8000-9000', '9000-10000', 'r-18']
     for illust_directory in illust_directories:
         illust_directory = base_directory + '\\' + illust_directory
+        if not os.path.isdir(illust_directory):
+            log.warn('The directory is not exist: {}'.format(illust_directory))
+            continue
         illust_files = os.listdir(illust_directory)
         log.info('illust_directory: %s, illust files size: %d' % (illust_directory, len(illust_files)))
         for illust_file in illust_files:
@@ -105,7 +109,7 @@ def collect_illust(collect_name, source_illust_file_path):
     move_target_directory = collect_name
     if not os.path.isdir(move_target_directory):
         # 如果collect_name不是路径，收藏到默认路径
-        move_target_directory = r'..\crawler\result\collect'
+        move_target_directory = r'..\crawler\result\collect\1111-r-18'
         move_target_directory = os.path.join(move_target_directory, collect_name)
 
     if not os.path.isdir(move_target_directory):

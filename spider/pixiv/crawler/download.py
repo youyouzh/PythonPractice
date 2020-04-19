@@ -63,7 +63,8 @@ def get_download_url_from_file():
 
 
 # 从本地数据查找URL，然后下载图片
-def download_by_illustration_id(pixiv_api, directory, illustration_id: int):
+def download_by_illustration_id(pixiv_api, directory: str, illustration_id: int):
+    log.info('begin download illust by illustration_id: {}'.format(illustration_id))
     illustration: Illustration = session.query(Illustration).get(illustration_id)
     if illustration is None:
         log.error('The illustration is not exist. illustration_id: {}'.format(illustration_id))
@@ -79,11 +80,11 @@ def download_by_illustration_id(pixiv_api, directory, illustration_id: int):
         return
 
     # 按照收藏点赞人数分文件夹
-    directory += '/' + '-'.join(str(i) for i in get_10_20(illustration.total_bookmarks))
+    # directory += '/' + '-'.join(str(i) for i in get_10_20(illustration.total_bookmarks))
 
-    if illustration.r_18 is not None and illustration.r_18 == 1:
+    # if illustration.r_18 is not None and illustration.r_18 == 1:
         # R18放在别的文件夹
-        directory += "/r-18"
+        # directory += "/r-18"
 
     for illustration_image in illustration_images:
         if illustration_image.image_url_origin is None or illustration_image.image_url_origin == '':
@@ -92,13 +93,32 @@ def download_by_illustration_id(pixiv_api, directory, illustration_id: int):
         if illustration_image.process == 'DOWNLOADED':
             log.info('The illustration_image has been downloaded. illustration_id: {}'.format(illustration_id))
             continue
-        log.info('begin process illust_id: {}, image_url: {}'.format(illustration_image.illust_id,
-                                                              illustration_image.image_url_origin))
+        log.info('begin process illust_id: {}, image_url: {}'
+                 .format(illustration_image.illust_id, illustration_image.image_url_origin))
         download_task(pixiv_api, directory, illustration_image=illustration_image)
         illustration_image.process = 'DOWNLOADED'
         session.merge(illustration_image)
         session.commit()
         log.info('end process illust_id: {}'.format(illustration_image.illust_id))
+    log.info('begin download illust by illustration_id: {}, illust image size: {}'
+             .format(illustration_id, len(illustration_images)))
+
+
+def download_by_user_id(save_directory, user_id: int):
+    log.info('begin download illust by user_id: {}'.format(user_id))
+    pixiv_api = AppPixivAPI()
+    pixiv_api.login(_USERNAME, _PASSWORD)
+    illustrations: [Illustration] = session.query(Illustration)\
+        .filter(Illustration.user_id == user_id)\
+        .filter(Illustration.total_bookmarks >= 6000)\
+        .order_by(Illustration.total_bookmarks.desc()).all()
+    if illustrations is None or len(illustrations) <= 0:
+        log.warn('The illustrations is empty. user_id: {}'.format(user_id))
+        return
+    log.info('The illustrations size is: {}'.format(len(illustrations)))
+    for illustration in illustrations:
+        download_by_illustration_id(pixiv_api, save_directory, illustration.id)
+    log.info('end download illust by user_id: {}'.format(user_id))
 
 
 # 获取整数倍 2324 -> [2000, 3000]
@@ -160,4 +180,7 @@ def download_by_pool():
 
 if __name__ == '__main__':
     # download_by_pool()
-    download_top()
+    # download_top()
+    user_id = 1212
+    save_file = r'.\result\illusts\\' + str(user_id)
+    download_by_user_id(save_file, user_id)
