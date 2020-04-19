@@ -44,9 +44,6 @@ def update_illust_tag(directory, tag):
         if illustration is None:
             log.info('The illustration is not exist. illust_id: {}'.format(illust_id))
             continue
-        if illustration.score > 0:
-            log.info("The illustration is exist. score: " + str(illustration.score))
-            continue
         log.info('process illust_id: {}, set tag to: {} '.format(illust_id, tag))
         illustration.tag = tag
         session.commit()
@@ -167,7 +164,7 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
 
 if __name__ == '__main__':
     # collect_illusts('too_long', is_too_long, 1000)
-    target_directory = r'..\crawler\result\collect\风景'
-    # update_illust_tag(target_directory, 'too_long')
+    target_directory = r'..\crawler\result\illusts\score-3-无感'
+    update_illust_tag(target_directory, 'ignore')
     # collect_illust_by_collect_function(is_gray)
-    extract_top(target_directory, 20)
+    # extract_top(target_directory, 20)
