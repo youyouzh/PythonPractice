@@ -39,6 +39,9 @@ def download_task(pixiv_api, directory, url=None, illustration_image: Illustrati
         save_file_name = str(basename[0]) + '-' + save_file_name + '.' + str(basename[1])
 
     log.info('begin download image. save file name: {}, download url: {}'.format(save_file_name, url))
+    if os.path.isfile(os.path.join(directory, save_file_name)):
+        log.info('The illust has been downloaded. file_name: {}'.format(save_file_name))
+        return
     try:
         pixiv_api.download(url, '', directory, replace=False, name=save_file_name)
     except (OSError, NameError):
@@ -90,9 +93,9 @@ def download_by_illustration_id(pixiv_api, directory: str, illustration_id: int)
         if illustration_image.image_url_origin is None or illustration_image.image_url_origin == '':
             log.info('The illustration_image image_url_origin is none. illustration_id: {}'.format(illustration_id))
             continue
-        if illustration_image.process == 'DOWNLOADED':
-            log.info('The illustration_image has been downloaded. illustration_id: {}'.format(illustration_id))
-            continue
+        # if illustration_image.process == 'DOWNLOADED':
+        #     log.info('The illustration_image has been downloaded. illustration_id: {}'.format(illustration_id))
+        #     continue
         log.info('begin process illust_id: {}, image_url: {}'
                  .format(illustration_image.illust_id, illustration_image.image_url_origin))
         download_task(pixiv_api, directory, illustration_image=illustration_image)
@@ -110,7 +113,7 @@ def download_by_user_id(save_directory, user_id: int):
     pixiv_api.login(_USERNAME, _PASSWORD)
     illustrations: [Illustration] = session.query(Illustration)\
         .filter(Illustration.user_id == user_id)\
-        .filter(Illustration.total_bookmarks >= 6000)\
+        .filter(Illustration.total_bookmarks >= 5000)\
         .order_by(Illustration.total_bookmarks.desc()).all()
     if illustrations is None or len(illustrations) <= 0:
         log.warn('The illustrations is empty. user_id: {}'.format(user_id))
@@ -181,6 +184,6 @@ def download_by_pool():
 if __name__ == '__main__':
     # download_by_pool()
     # download_top()
-    user_id = 1212
-    save_file = r'.\result\illusts\\' + str(user_id)
+    user_id = 490219
+    save_file = os.path.join(r'.\result\collect', str(user_id))
     download_by_user_id(save_file, user_id)

@@ -35,23 +35,34 @@ def update_illust_tag(directory, tag):
     if not os.path.exists(directory):
         log.error('The directory is not exist: {}'.format(directory))
         return
-    file_names = os.listdir(directory)
-    for file_name in file_names:
+    illust_files = os.listdir(directory)
+    for illust_file in illust_files:
         # 获取目录或者文件的路径
-        if os.path.isdir(os.path.join(directory, file_name)):
+        if os.path.isdir(os.path.join(directory, illust_file)):
             continue
-        log.info('process file: ' + file_name)
+        log.info('process file: ' + illust_file)
         # 提取 illust_id
-        illust_id = file_name.split('_')[0]
-        if not illust_id.isnumeric():
+        illust_id = get_illust_id(illust_file)
+        if illust_id <= 0:
+            log.warn('The file illust_id is not exist. file: {}'.format(illust_file))
             continue
-        illustration: Illustration = session.query(Illustration).get(int(illust_id))
+        illustration: Illustration = session.query(Illustration).get(illust_id)
         if illustration is None:
             log.info('The illustration is not exist. illust_id: {}'.format(illust_id))
             continue
         log.info('process illust_id: {}, set tag to: {} '.format(illust_id, tag))
         illustration.tag = tag
         session.commit()
+    log.info('process end. total illust size: {}'.format(len(illust_files)))
+
+
+# 更新文件夹下的所有子文件
+def update_illust_tag_by_directory(parent_directory, tag):
+    child_directories = os.listdir(parent_directory)
+    for directory in child_directories:
+        directory = os.path.join(target_directory, directory)
+        log.info('begin process directory: {}'.format(directory))
+        update_illust_tag(directory, tag)
 
 
 # 是否指定的tag
@@ -200,21 +211,9 @@ if __name__ == '__main__':
     illust_id = 60881929
     # user_id = get_user_id_by_illust_id(illust_id)
 
-    user_ids = [
-        5375435,
-        4752417,
-        6996493,
-        258003,
-        648285,
-        4338012,
-        93360,
-        1067404,
-        7210261,
-        15305293, 1480420, 2650491, 6210796, 3869665, 5594793, 1854020, 333556, 1039353, 24359642, 871625, 9016, 17929545, 4265931, 292644, 1113943, 4889903, 2774175, 27517, 83739, 8252709, 465133, 4872213, 10509347, 1035047, 5476137, 12913304, 18340266, 76712, 14112962, 355065, 1864423, 22438, 464063, 1589657, 6662895, 2188232, 7038833, 1899477, 33333, 4754550, 4346822, 211515, 552160, 1055457, 4493551, 853087, 573302, 6957790, 75567, 22853292, 3684920, 4196200, 8189060, 1334928, 19880053, 772547, 1193008, 3316400, 177784, 74184, 1041194, 10669991, 2864095, 24517, 2159670, 194231, 191346, 1243903, 711257, 490219, 1226647, 11539, 512849, 758591, 3016, 3079252, 306422, 105026, 40222, 13379747, 22124330, 418969, 29362997, 1655331, 27207, 159905, 353613, 10618627, 6751, 883091]
-    for user_id in user_ids:
-        log.info('illust_id: {}, the user_id: {}'.format(illust_id, user_id))
-        collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
-    # target_directory = r'..\crawler\result\illusts\score-3-无感'
-    # update_illust_tag(target_directory, 'ignore')
+    # user_id = 490219
+    # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
+    target_directory = r'..\crawler\result\collect\6210796-黑丝-ignore'
+    update_illust_tag(target_directory, 'ignore')
     # collect_illust_by_collect_function(is_gray)
     # extract_top(target_directory, 20)
