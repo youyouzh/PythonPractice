@@ -43,11 +43,10 @@ def show_by_illust_id(illust_id: int):
     :param illust_id: 插画id
     :return: None
     """
-    illust_path = get_illust_file_path(7996295)
+    illust_path = get_illust_file_path(illust_id)
     illust_image = Image.open(illust_path)
     illust_pixel_matrix = np.array(illust_image)
     log.info("illust path: {}, pixel shape: {}".format(illust_path, illust_pixel_matrix.shape))
-    collect_illust('temp', illust_path)
 
     plt.figure('Image')
     plt.imshow(illust_image)
