@@ -56,11 +56,6 @@ def show_by_illust_id(illust_id: int):
     plt.show()
 
 
-# [[ 43  62  82]
-#  [247 226 218]
-#  [ 82 178 177]
-#  [189 137 139]
-#  [178 219 204]]
 def rgb_kmeans(illust_path: str, show_image=False):
     """
     K-Means聚类图片的颜色
@@ -106,7 +101,7 @@ def read_rgb_by_pil(illust_path):
 
 
 def read_rgb_by_cv(illust_path):
-    # 因为window编码问题，不能使用 cv2.imread(illust_path), 会返回 None
+    # 因为window中文编码问题，不能使用 cv2.imread(illust_path), 会返回 None
     # 此时返回的是一个ndarray
     illust_image = cv2.imdecode(np.fromfile(illust_path, dtype=np.int), cv2.IMREAD_COLOR)
     # if illust_image.type() == cv2.CV_8UC1:

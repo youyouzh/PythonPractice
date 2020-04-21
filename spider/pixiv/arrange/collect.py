@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import os
-import numpy as np
 import json
+import os
+
+import numpy as np
 from PIL import Image
+
 import u_base.u_log as log
-
-from spider.pixiv.mysql.db import session, Illustration, IllustrationTag
-from spider.pixiv.arrange.illust_file import read_file_as_list, collect_illust, get_all_image_file_path, get_illust_id
-
+from spider.pixiv.arrange.illust_file import collect_illust, get_all_image_file_path, get_illust_id
+from spider.pixiv.mysql.db import session, Illustration
 
 __all__ = [
     'update_illust_tag',
@@ -213,7 +213,7 @@ if __name__ == '__main__':
 
     # user_id = 490219
     # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
-    target_directory = r'..\crawler\result\collect\6210796-黑丝-ignore'
-    update_illust_tag(target_directory, 'ignore')
+    target_directory = r'..\crawler\result\collect\lose'
+    update_illust_tag(target_directory, 'lose')
     # collect_illust_by_collect_function(is_gray)
     # extract_top(target_directory, 20)
