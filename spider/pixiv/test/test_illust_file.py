@@ -1,5 +1,17 @@
+import os
+
 from spider.pixiv.arrange.illust_file import *
 from u_base import u_unittest
+
+
+def test_get_base_path():
+    actual_base_path = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result'
+    path_name = 'collect'
+    u_unittest.assert_eq(os.path.join(actual_base_path, path_name), get_base_path(path_name))
+
+    # 包含子路径的情况
+    path_name = r'collect\ignore'
+    u_unittest.assert_eq(os.path.join(actual_base_path, path_name), get_base_path(path_name))
 
 
 def test_get_illust_id():
