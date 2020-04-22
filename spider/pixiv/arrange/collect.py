@@ -12,10 +12,16 @@ from spider.pixiv.mysql.db import session, Illustration
 
 __all__ = [
     'update_illust_tag',
+    'update_illust_tag_by_directory',
     'is_special_tag',
     'is_gray',
     'is_small',
-    'collect_illusts'
+    'is_too_long',
+    'is_special_illust_ids',
+    'extract_top',
+    'collect_illusts',
+    'get_user_id_by_illust_id',
+    'check_user_id'
 ]
 
 
@@ -24,7 +30,7 @@ cache_illust_ids = []
 
 
 # 更新本地整理好的插图
-def update_illust_tag(directory, tag):
+def update_illust_tag(directory: str, tag: str):
     """
     将某个文件夹下的所有文件在illust数据库中的记录标记score值
     :param directory: 目标文件夹
@@ -130,7 +136,8 @@ def is_special_illust_ids(illust_path: str = None, **kwargs) -> bool:
         log.error('The user_id or illust_id is empty.')
         return False
     user_id = kwargs.get('user_id')
-    cache_illust_ids_path = r'.\cache\\' + str(user_id) + '-illust-ids.json'
+    cache_illust_ids_path = os.path.dirname(__file__)
+    cache_illust_ids_path = os.path.join(cache_illust_ids_path, r'.\cache\\' + str(user_id) + '-illust-ids.json')
     if not os.path.isfile(cache_illust_ids_path):
         # 某个用户的illust_id
         illust_ids = session.query(Illustration.id).filter(Illustration.user_id == user_id)\
@@ -207,13 +214,45 @@ def get_user_id_by_illust_id(illust_id: int) -> int:
     return illust.user_id
 
 
+def check_user_id(directory: str):
+    if not os.path.isdir(directory):
+        log.error('The directory is not exist. directory: {}'.format(directory))
+        return None
+    illust_files = os.listdir(directory)
+    illustrations = []
+    user_id_illust_count = {}
+    for illust_file in illust_files:
+        illust_file_path = os.path.join(directory, illust_file)
+        illust_id = get_illust_id(illust_file_path)
+        if illust_id <= 0:
+            log.warn('The illust id is not exist. illust file: {}'.format(illust_file_path))
+            continue
+        illustration: Illustration = session.query(Illustration).get(illust_id)
+        if illustration is None:
+            log.warn('The illustration is not exist. illust_id: {}'.format(illust_id))
+            continue
+        illustrations.append({
+            'id': illustration.id,
+            'user_id': illustration.user_id,
+            'path': illust_file_path
+        })
+        log.info('user_id: {}, current path: {}'.format(illustration.user_id, illust_file))
+        source_illust_file_path = os.path.abspath(illust_file_path)
+        move_target_file_path = os.path.join(os.path.dirname(source_illust_file_path), str(illustration.user_id))
+        if not os.path.isdir(move_target_file_path):
+            os.makedirs(move_target_file_path)
+        move_target_file_path = os.path.join(move_target_file_path, illust_file)
+        os.replace(source_illust_file_path, move_target_file_path)
+    log.info('check end. size: {}'.format(len(illustrations)))
+
+
 if __name__ == '__main__':
     illust_id = 60881929
     # user_id = get_user_id_by_illust_id(illust_id)
 
     # user_id = 490219
     # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
-    target_directory = r'..\crawler\result\collect\lose'
-    update_illust_tag(target_directory, 'lose')
-    # collect_illust_by_collect_function(is_gray)
+    target_directory = r'..\crawler\result\collect\4754550-可爱画风-check\4752417'
+    # update_illust_tag(target_directory, 'lose')
+    check_user_id(target_directory)
     # extract_top(target_directory, 20)
