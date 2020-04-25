@@ -2,12 +2,15 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import time
+import re
 
 import numpy as np
+import PIL
 from PIL import Image
 
 import u_base.u_log as log
-from spider.pixiv.arrange.illust_file import collect_illust, get_all_image_file_path, get_illust_id
+from spider.pixiv.arrange.file_util import collect_illust, get_all_image_file_path, get_illust_id
 from spider.pixiv.mysql.db import session, Illustration
 
 __all__ = [
@@ -246,13 +249,57 @@ def check_user_id(directory: str):
     log.info('check end. size: {}'.format(len(illustrations)))
 
 
+def remove_small_file(target_directory: str):
+    min_image_size = 5e5  # 小于500k的文件
+    move_directory = r'H:\Pictures\动漫图片\small-2'
+    if not os.path.isdir(move_directory):
+        os.makedirs(move_directory)
+
+    if os.path.isdir(target_directory):
+        files = os.listdir(target_directory)
+        if len(files) <= 0:
+            return
+        for file in files:
+            move_to_file = os.path.join(move_directory, str(time.time()) + '-' + file)  # 避免文件名重复
+            file = os.path.join(target_directory, file)
+            if os.path.isdir(file):
+                # 如果是文件夹，递归处理
+                remove_small_file(file)
+            if os.path.isfile(file):
+                try:
+                    file_handle = open(file, 'rb')
+                    image = Image.open(file_handle)
+                    file_handle.close()  # 必须关闭文件句柄，否则无法移动文件
+                    if (image.width < 1200 and image.height < 1200) or os.path.getsize(file) <= min_image_size:
+                        log.info('The file size is small, file: {}, size: {}, width: {}, height: {}'
+                                 .format(file, os.path.getsize(file), image.width, image.height))
+                        os.replace(file, move_to_file)
+                except (PermissionError, PIL.UnidentifiedImageError, FileNotFoundError):
+                    log.error('PermissionError, file: {}'.format(file))
+
+
 if __name__ == '__main__':
-    illust_id = 60881929
+    # illust_id = 60881929
     # user_id = get_user_id_by_illust_id(illust_id)
 
     # user_id = 490219
     # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
-    target_directory = r'..\crawler\result\collect\4754550-可爱画风-check\4752417'
+    # target_directory = r'..\crawler\result\collect\4754550-可爱画风-check\4752417'
     # update_illust_tag(target_directory, 'lose')
-    check_user_id(target_directory)
+    # check_user_id(target_directory)
     # extract_top(target_directory, 20)
+    directory = r'H:\Pictures\整理\R18\undressing'
+    files = os.listdir(directory)
+    for file in files:
+        move_to_file = os.path.join(directory, re.sub(r'[\d.]+-', '', file))
+        file = os.path.join(directory, file)
+        # if move_to_file == file:
+        #     log.info('The file is correct. file: {}'.format(file))
+        #     continue
+        try:
+            log.info('process file. from: {} --> to: {}'.format(file, move_to_file))
+            # os.replace(file, move_to_file)
+            os.remove(file)
+        except:
+            log.error('error file: {}'.format(file))
+    # remove_small_file(r'H:\Pictures\动漫图片\small')
