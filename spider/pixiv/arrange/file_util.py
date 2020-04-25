@@ -58,6 +58,11 @@ def read_file_as_list(file_path: str) -> list:
 
 
 def get_illust_id(illust_file_path: str) -> int:
+    """
+    通过文件名，提取插画pixiv_id
+    :param illust_file_path: 插画路径，可以使相对路径，绝对路径或者文件名
+    :return: 插画id，如果没有则返回-1
+    """
     illust_filename = os.path.split(illust_file_path)[1]
     illust_id = illust_filename.split('_')[0]
     if illust_id.isdigit():
@@ -184,6 +189,12 @@ def get_illust_file_path(illust_id: int) -> str:
 
 
 def collect_illust(collect_name, source_illust_file_path):
+    """
+    收藏插画，适用于pixiv下载图片
+    :param collect_name: 收藏tag，如果是存在的路径则将图片移动到该路径，如果只是简单name，那么使用默认路径
+    :param source_illust_file_path: 原始插画地址
+    :return: None
+    """
     move_target_directory = collect_name
     if not os.path.isdir(move_target_directory):
         # 如果collect_name不是路径，收藏到默认路径
@@ -203,6 +214,11 @@ def collect_illust(collect_name, source_illust_file_path):
 
 
 def get_directory_illusts(illust_directory) -> list:
+    """
+    获取某个文件夹下的所有插簧，适用于pixiv插画
+    :param illust_directory: 插画路径
+    :return: 插画信息列表
+    """
     illusts = []
     if not os.path.isdir(illust_directory):
         log.error('The illust directory is not exist: {}'.format(illust_directory))
