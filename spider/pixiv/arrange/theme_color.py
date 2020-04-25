@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 import u_base.u_log as log
-from spider.pixiv.arrange.illust_file import get_illust_file_path, collect_illust, get_illust_id, get_directory_illusts
+from spider.pixiv.arrange.file_util import get_illust_file_path, collect_illust, get_illust_id, get_directory_illusts
 
 
 def show(images, themes):

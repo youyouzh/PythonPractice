@@ -3,6 +3,7 @@
 """
 
 import os
+import re
 import u_base.u_log as log
 
 
@@ -13,7 +14,8 @@ __all__ = [
     'get_illust_file_path',
     'get_illust_id',
     'collect_illust',
-    'get_directory_illusts'
+    'get_directory_illusts',
+    'get_all_sub_files'
 ]
 
 
@@ -71,19 +73,19 @@ def get_all_image_file_path(use_cache: bool = True) -> list:
     :return: 图片路径列表
     """
     log.info('begin read all image file illusts')
-    illust_list_save_path = r'cache\all_image_file.txt'
-    illust_list_save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), illust_list_save_path)
-    if use_cache and os.path.isfile(illust_list_save_path):
+    cache_file_path = r'cache\all_image_file.txt'
+    cache_file_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), cache_file_path)
+    if use_cache and os.path.isfile(cache_file_path):
         # 存在缓存文件直接使用缓存
-        log.info('read all image file from cache: {}'.format(illust_list_save_path))
-        return read_file_as_list(illust_list_save_path)
+        log.info('read all image file from cache: {}'.format(cache_file_path))
+        return read_file_as_list(cache_file_path)
 
-    # 遍历目录
-    if not os.path.isdir(os.path.split(illust_list_save_path)[0]):
-        log.info('create the cache directory: {}'.format(illust_list_save_path))
-        os.makedirs(os.path.split(illust_list_save_path)[0])
+    # 如果cache目录不存在，则创建
+    if not os.path.isdir(os.path.split(cache_file_path)[0]):
+        log.info('create the cache directory: {}'.format(cache_file_path))
+        os.makedirs(os.path.split(cache_file_path)[0])
 
-    illust_list_file_handle = open(illust_list_save_path, 'w+', encoding='utf-8')
+    cache_file_path_handler = open(cache_file_path, 'w+', encoding='utf-8')
     illust_file_paths = set()
     base_directory = get_base_path('illusts')
     illust_directories = ['10000-20000', '20000-30000', '30000-40000', '40000-50000', '5000-6000',
@@ -102,10 +104,67 @@ def get_all_image_file_path(use_cache: bool = True) -> list:
                 # 目录不用处理
                 continue
             illust_file_paths.add(full_source_illust_file_path)
-            illust_list_file_handle.writelines(full_source_illust_file_path + '\n')
+            cache_file_path_handler.writelines(full_source_illust_file_path + '\n')
     log.info('The illust image file size: {}'.format(len(illust_file_paths)))
     # illust_list_file_handle.close()
     return list(illust_file_paths)
+
+
+def get_all_image_files(image_directory: str, use_cache: bool = True) -> list:
+    """
+    递归获取某个文件夹下的所有图片
+    :param image_directory: 图片路径
+    :param use_cache: 是否使用缓存
+    :return: 图片绝对路径列表
+    """
+    if not os.path.isdir(image_directory):
+        log.error('The image directory is not exist: {}'.format(image_directory))
+        return []
+    cache_file_path = r'cache\file-cache-' + re.sub(r"[\\/?*<>|\":]+", '-', image_directory) + '.txt'
+    cache_file_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), cache_file_path)
+    if use_cache and os.path.isfile(cache_file_path):
+        # 存在缓存文件直接使用缓存
+        log.info('read all image file from cache: {}'.format(cache_file_path))
+        return read_file_as_list(cache_file_path)
+    # 如果cache目录不存在，则创建
+    if not os.path.isdir(os.path.split(cache_file_path)[0]):
+        log.info('create the cache directory: {}'.format(cache_file_path))
+        os.makedirs(os.path.split(cache_file_path)[0])
+    all_files = get_all_sub_files(image_directory)
+    cache_file_path_handler = open(cache_file_path, 'w+', encoding='utf-8')
+    for file in all_files:
+        cache_file_path_handler.writelines(file + '\n')
+    cache_file_path_handler.close()
+    log.info('get_all_image_files finish. file size: {}'.format(len(all_files)))
+    return all_files
+
+
+def get_all_sub_files(root_path, all_files=None):
+    """
+    递归获取所有子文件列表
+    :param root_path: 递归根目录
+    :param all_files: 递归过程中的所有文件列表
+    :return:
+    """
+    if all_files is None:
+        all_files = []
+
+    # root_path 不是目录直接返回file_list
+    if not os.path.isdir(root_path):
+        return all_files
+
+    # 获取该目录下所有的文件名称和目录名称
+    dir_or_files = os.listdir(root_path)
+    for dir_or_file in dir_or_files:
+        dir_or_file = os.path.join(root_path, dir_or_file)  # 拼接得到完整路径
+
+        if os.path.isdir(dir_or_file):
+            # 如果是文件夹，则递归遍历
+            get_all_sub_files(dir_or_file, all_files)
+        else:
+            # 否则将当前文件加入到 all_files
+            all_files.append(os.path.abspath(dir_or_file))
+    return all_files
 
 
 def get_illust_file_path(illust_id: int) -> str:
@@ -132,6 +191,7 @@ def collect_illust(collect_name, source_illust_file_path):
         move_target_directory = os.path.join(move_target_directory, collect_name)
 
     if not os.path.isdir(move_target_directory):
+        # 文件不存在则创建
         os.makedirs(move_target_directory)
     move_target_file_path = os.path.join(move_target_directory, os.path.split(source_illust_file_path)[1])
 
@@ -167,4 +227,3 @@ def get_directory_illusts(illust_directory) -> list:
 
 if __name__ == '__main__':
     get_all_image_file_path(False)
-
