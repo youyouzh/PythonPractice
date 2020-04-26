@@ -15,7 +15,8 @@ __all__ = [
     'get_illust_id',
     'collect_illust',
     'get_directory_illusts',
-    'get_all_sub_files'
+    'get_all_sub_files',
+    'get_all_image_paths'
 ]
 
 
@@ -115,13 +116,14 @@ def get_all_image_file_path(use_cache: bool = True) -> list:
     return list(illust_file_paths)
 
 
-def get_all_image_files(image_directory: str, use_cache: bool = True) -> list:
+def get_all_image_paths(image_directory: str, use_cache: bool = True) -> list:
     """
     递归获取某个文件夹下的所有图片
     :param image_directory: 图片路径
     :param use_cache: 是否使用缓存
     :return: 图片绝对路径列表
     """
+    log.info('begin get all image files from path: {}'.format(image_directory))
     if not os.path.isdir(image_directory):
         log.error('The image directory is not exist: {}'.format(image_directory))
         return []
