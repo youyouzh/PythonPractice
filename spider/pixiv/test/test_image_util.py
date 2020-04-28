@@ -28,3 +28,8 @@ def test_get_color_by_hsv():
     u_unittest.assert_eq('red', get_color_by_hsv(5))
     u_unittest.assert_eq('red', get_color_by_hsv(160))
     u_unittest.assert_eq('orange', get_color_by_hsv(25))
+
+
+def test_show_hist():
+    image_path = r'H:\Pictures\动漫插画\ssim\Wallpapers_111.png'
+    show_hist(image_path)
