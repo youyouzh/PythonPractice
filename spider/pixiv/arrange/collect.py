@@ -10,7 +10,8 @@ import PIL
 from PIL import Image
 
 import u_base.u_log as log
-from spider.pixiv.arrange.file_util import collect_illust, get_all_image_file_path, get_illust_id
+from spider.pixiv.arrange.file_util import collect_illust, get_all_image_file_path, get_illust_id, get_all_image_paths
+from spider.pixiv.arrange.image_util import extract_main_color
 from spider.pixiv.mysql.db import session, Illustration
 
 __all__ = [
@@ -118,6 +119,11 @@ def is_gray(illust_path: str) -> bool:
     channel_b = np.array(illust_image.getchannel('B'), dtype=np.int)
     diff_sum = (channel_r - channel_g).var() + (channel_g - channel_b).var() + (channel_b - channel_r).var()
     return diff_sum <= threshold
+
+
+# 是否特定颜色
+def is_main_color(illust_path: str, color: str) -> bool:
+    return extract_main_color(illust_path) == color
 
 
 # 是否图片太小
@@ -249,33 +255,32 @@ def check_user_id(directory: str):
     log.info('check end. size: {}'.format(len(illustrations)))
 
 
-def remove_small_file(target_directory: str):
-    min_image_size = 5e5  # 小于500k的文件
-    move_directory = r'H:\Pictures\动漫图片\small-2'
+def move_small_file(target_directory: str):
+    min_image_size = 3e5  # 最小图片大小
+    # move_directory = r'H:\Pictures\动漫图片\small-2'
+    move_directory = os.path.join(target_directory, 'small')
     if not os.path.isdir(move_directory):
         os.makedirs(move_directory)
 
-    if os.path.isdir(target_directory):
-        files = os.listdir(target_directory)
-        if len(files) <= 0:
-            return
-        for file in files:
-            move_to_file = os.path.join(move_directory, str(time.time()) + '-' + file)  # 避免文件名重复
-            file = os.path.join(target_directory, file)
-            if os.path.isdir(file):
-                # 如果是文件夹，递归处理
-                remove_small_file(file)
-            if os.path.isfile(file):
-                try:
-                    file_handle = open(file, 'rb')
-                    image = Image.open(file_handle)
-                    file_handle.close()  # 必须关闭文件句柄，否则无法移动文件
-                    if (image.width < 1200 and image.height < 1200) or os.path.getsize(file) <= min_image_size:
-                        log.info('The file size is small, file: {}, size: {}, width: {}, height: {}'
-                                 .format(file, os.path.getsize(file), image.width, image.height))
-                        os.replace(file, move_to_file)
-                except (PermissionError, PIL.UnidentifiedImageError, FileNotFoundError):
-                    log.error('PermissionError, file: {}'.format(file))
+    image_paths = get_all_image_paths(target_directory)
+    log.info('total image file size: {}'.format(len(image_paths)))
+    for image_path in image_paths:
+        if os.path.isfile(image_path):
+            move_target_path = os.path.join(move_directory, os.path.split(image_path)[1])
+            if os.path.isfile(move_target_path):
+                log.warn('The file is exist. can not move: {}'.format(image_path))
+                continue
+            try:
+                file_handle = open(image_path, 'rb')
+                image = Image.open(file_handle)
+                file_handle.close()  # 必须关闭文件句柄，否则无法移动文件
+                if (image.width < 1200 and image.height < 1200) or os.path.getsize(image_path) <= min_image_size:
+                    log.info('The file size is small, file: {}, size: {}, width: {}, height: {}'
+                             .format(image_path, os.path.getsize(image_path), image.width, image.height))
+                    log.info('remove file from: {} ---> to: {}'.format(image_path, move_target_path))
+                    os.replace(image_path, move_target_path)
+            except (PermissionError, PIL.UnidentifiedImageError, FileNotFoundError):
+                log.error('PermissionError, file: {}'.format(image_path))
 
 
 if __name__ == '__main__':
@@ -284,22 +289,9 @@ if __name__ == '__main__':
 
     # user_id = 490219
     # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
-    # target_directory = r'..\crawler\result\collect\4754550-可爱画风-check\4752417'
+    target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts'
+    move_small_file(target_directory)
+    # collect_illusts(r'orange', is_main_color, 50, color='orange')
     # update_illust_tag(target_directory, 'lose')
     # check_user_id(target_directory)
     # extract_top(target_directory, 20)
-    directory = r'H:\Pictures\整理\R18\undressing'
-    files = os.listdir(directory)
-    for file in files:
-        move_to_file = os.path.join(directory, re.sub(r'[\d.]+-', '', file))
-        file = os.path.join(directory, file)
-        # if move_to_file == file:
-        #     log.info('The file is correct. file: {}'.format(file))
-        #     continue
-        try:
-            log.info('process file. from: {} --> to: {}'.format(file, move_to_file))
-            # os.replace(file, move_to_file)
-            os.remove(file)
-        except:
-            log.error('error file: {}'.format(file))
-    # remove_small_file(r'H:\Pictures\动漫图片\small')

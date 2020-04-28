@@ -159,6 +159,8 @@ def get_all_sub_files(root_path, all_files=None):
     # root_path 不是目录直接返回file_list
     if not os.path.isdir(root_path):
         return all_files
+    else:
+        log.info('begin through path: {}'.format(root_path))
 
     # 获取该目录下所有的文件名称和目录名称
     dir_or_files = os.listdir(root_path)
