@@ -22,6 +22,7 @@ __all__ = [
     'is_small',
     'is_too_long',
     'is_special_illust_ids',
+    'is_small_size',
     'extract_top',
     'collect_illusts',
     'get_user_id_by_illust_id',
@@ -130,6 +131,22 @@ def is_main_color(illust_path: str, color: str) -> bool:
 def is_small(illust_path: str) -> bool:
     min_image_size = 1e5  # 小于100k的文件
     return os.path.getsize(illust_path) <= min_image_size
+
+
+# 是否图片长宽太小或者文件太小
+def is_small_size(illust_path: str, **kwargs) -> bool:
+    default_kwargs = {
+        'min_file_size': 1e5,
+        'min_image_width': 1200,
+        'min_image_height': 1200,
+    }
+    default_kwargs.update(kwargs)
+    file_handle = open(illust_path, 'rb')
+    image = Image.open(file_handle)
+    file_handle.close()  # 必须关闭文件句柄，否则无法移动文件
+    return (image.width < default_kwargs.get('min_image_width')
+            and image.height < default_kwargs.get('min_image_height')) \
+        or os.path.getsize(illust_path) <= default_kwargs.get('min_file_size')
 
 
 # 图片是否太长
