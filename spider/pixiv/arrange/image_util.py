@@ -12,6 +12,7 @@ import u_base.u_log as log
 
 __all__ = [
     'show_color_space_3d',
+    'extract_main_color',
     'get_color_by_hsv',
     'pil_to_cv2_image',
     'cv_to_pil_image',
@@ -126,14 +127,24 @@ def extract_main_color(image_path):
     h, s, v = cv2.split(cv2.cvtColor(pixel_colors, cv2.COLOR_RGB2HSV))
 
     h = np.reshape(h, width * height)
+    h_to_count = collections.Counter(h)  # 这样很快
+
     color_point = {}
-    for point_h in h:
+    for point_h in h_to_count:
         color = get_color_by_hsv(point_h)
         if color in color_point:
-            color_point[color] += 1
+            color_point[color] += h_to_count[point_h]
         else:
-            color_point[color] = 1
-    log.info('end extract main color: {}'.format(image_path))
+            color_point[color] = h_to_count[point_h]
+    log.info('The picture color distribution: {}'.format(color_point))
+    # sorted(color_point.items(), key=lambda x: x[1], reverse=True)   # 颜色从高到低排序
+    main_color_proportion_threshold = 0.5
+    for color in color_point:
+        if color_point[color] >= width * height * main_color_proportion_threshold:
+            log.info('--------> get main color: {}, path: {}'.format(color, image_path))
+            return color
+    log.info('The picture has not main color. {}'.format(image_path))
+    return None
 
 
 def get_color_by_hsv(h: int, s: int = None, v: int = None):
