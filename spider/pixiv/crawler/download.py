@@ -39,7 +39,8 @@ def download_task(pixiv_api, directory, url=None, illustration_image: Illustrati
         save_file_name = str(basename[0]) + '-' + save_file_name + '.' + str(basename[1])
 
     log.info('begin download image. save file name: {}, download url: {}'.format(save_file_name, url))
-    if os.path.isfile(os.path.join(directory, save_file_name)):
+    if os.path.isfile(os.path.join(directory, save_file_name)) \
+            and os.path.getsize(os.path.join(directory, save_file_name)) >= 200:
         log.info('The illust has been downloaded. file_name: {}'.format(save_file_name))
         return
     try:
@@ -184,6 +185,6 @@ def download_by_pool():
 if __name__ == '__main__':
     # download_by_pool()
     # download_top()
-    user_id = 490219
-    save_file = os.path.join(r'.\result\collect', str(user_id))
+    user_id = 40614
+    save_file = os.path.join(r'.\result\favorite\40614-望月しいな-博丽灵梦', str(user_id))
     download_by_user_id(save_file, user_id)
