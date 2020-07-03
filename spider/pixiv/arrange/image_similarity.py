@@ -13,31 +13,51 @@ from matplotlib import pyplot as plt
 
 def compare_similarity():
     log.info('begin')
-    directory = r'H:\Pictures\动漫插画\ssim'
+    directory = r'H:\Pictures\动漫插画\东方Project\爱丽丝·玛格特罗依德\small'
+    sim_directory = os.path.join(directory, 'sim')
+    if not os.path.isdir(sim_directory):
+        os.makedirs(sim_directory)
     image_paths = get_all_image_paths(directory, use_cache=False)
     dimension = 200
     log.info('all image size: {}'.format(len(image_paths)))
     similarities = []
-    for image_path1 in image_paths:
-        log.info('source image path: {}'.format(image_path1))
-        for image_path2 in image_paths:
-            if image_path1 == image_path2:
+    i = 0
+    while i < len(image_paths):
+        # check file
+        if not os.path.isfile(image_paths[i]):
+            log.warn('The file is not exist: {}'.format(image_paths[i]))
+            i += 1
+            continue
+        log.info('source image path: {}'.format(image_paths[i]))
+        j = i + 1
+        while j < len(image_paths):
+            # check file
+            if not os.path.isfile(image_paths[j]):
+                log.warn('The file is not exist: {}'.format(image_paths[j]))
+                j += 1
                 continue
-            log.info('compare similarity: image1: {}, image2: {}'.format(image_path1, image_path2))
-            similarity, image1, image2 = similarity_hist(image_path1, image_path2, dimension)
+            log.info('compare similarity: image1: {}, image2: {}'.format(image_paths[i], image_paths[j]))
+            similarity, image1, image2 = similarity_hist(image_paths[i], image_paths[j], dimension)
             similarities.append({
-                'source_path': image_path1,
-                'target_path': image_path2,
+                'source_path': image_paths[i],
+                'target_path': image_paths[j],
                 'similarity': similarity
             })
             log.info('similarity: {}'.format(similarity))
-            plt.subplot(121)
-            plt.imshow(image1)
-            plt.subplot(122)
-            plt.imshow(image2)
-            plt.show()
+            if similarity >= 0.99:
+                log.info('move file. similarity: {}, file: {}'.format(similarity, image_paths[j]))
+                os.replace(image_paths[j],
+                           os.path.join(sim_directory, str(i) + '-' + os.path.split(image_paths[j])[1]))
+            j += 1
+            # plt.subplot(121)
+            # plt.imshow(image1)
+            # plt.subplot(122)
+            # plt.imshow(image2)
+            # plt.show()
             # break
-        break
+        # break
+        i += 1
+    i = 0
     similarities.sort(key=lambda x: x['similarity'], reverse=True)
     log.info('the most similarity: {}'.format(similarities[0]))
 
