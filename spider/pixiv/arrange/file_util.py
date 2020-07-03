@@ -68,7 +68,7 @@ def get_illust_id(illust_file_path: str) -> int:
     illust_id = illust_filename.split('_')[0]
     if illust_id.isdigit():
         return int(illust_id)
-    log.warn('The illust_id is not error. illust_file: {}'.format(illust_file_path))
+    log.warn('The illust_id is error. illust_file: {}'.format(illust_file_path))
     return -1
 
 

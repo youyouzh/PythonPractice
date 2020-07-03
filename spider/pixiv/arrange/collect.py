@@ -24,9 +24,7 @@ __all__ = [
     'is_special_illust_ids',
     'is_small_size',
     'extract_top',
-    'collect_illusts',
-    'get_user_id_by_illust_id',
-    'check_user_id'
+    'collect_illusts'
 ]
 
 
@@ -64,6 +62,7 @@ def update_illust_tag(directory: str, tag: str):
         log.info('process illust_id: {}, set tag to: {} '.format(illust_id, tag))
         illustration.tag = tag
         session.commit()
+        # os.remove(os.path.join(directory, illust_file))
     log.info('process end. total illust size: {}'.format(len(illust_files)))
 
 
@@ -71,7 +70,7 @@ def update_illust_tag(directory: str, tag: str):
 def update_illust_tag_by_directory(parent_directory, tag):
     child_directories = os.listdir(parent_directory)
     for directory in child_directories:
-        directory = os.path.join(target_directory, directory)
+        directory = os.path.join(parent_directory, directory)
         log.info('begin process directory: {}'.format(directory))
         update_illust_tag(directory, tag)
 
@@ -136,17 +135,26 @@ def is_small(illust_path: str) -> bool:
 # 是否图片长宽太小或者文件太小
 def is_small_size(illust_path: str, **kwargs) -> bool:
     default_kwargs = {
-        'min_file_size': 1e5,
-        'min_image_width': 1200,
-        'min_image_height': 1200,
+        'min_file_size': 5e5,
+        'min_image_width': 1500,
+        'min_image_height': 1500,
     }
     default_kwargs.update(kwargs)
+
+    illust_id = get_illust_id(illust_path)
+    illustration: Illustration = session.query(Illustration).get(illust_id)
+    return (illustration.width <= default_kwargs.get('min_image_width')
+            and illustration.height <= default_kwargs.get('min_image_height')) \
+        or illustration.height >= illustration.width * 3\
+        or os.path.getsize(illust_path) <= default_kwargs.get('min_file_size')
+
+
+# 判断是否特别的image，需要读取图像RGB信息
+def is_special_image(illust_path: str, **kwargs) -> bool:
     file_handle = open(illust_path, 'rb')
     image = Image.open(file_handle)
     file_handle.close()  # 必须关闭文件句柄，否则无法移动文件
-    return (image.width < default_kwargs.get('min_image_width')
-            and image.height < default_kwargs.get('min_image_height')) \
-        or os.path.getsize(illust_path) <= default_kwargs.get('min_file_size')
+    return False
 
 
 # 图片是否太长
@@ -217,8 +225,14 @@ def extract_top(illust_path: str, count: int):
 # 移动、统一、分类文件
 def collect_illusts(collect_tag='back', collect_function=None, max_collect_count=10, **kwargs):
     log.info('begin collect illusts. tag: {}, max_collect_count: {}'.format(collect_tag, max_collect_count))
-    illust_paths = get_all_image_file_path()
+    default_kwargs = {
+        'target_directory': r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts',
+        'use_cache': True
+    }
+    default_kwargs.update(kwargs)
+    kwargs = default_kwargs
 
+    illust_paths = get_all_image_paths(kwargs.get('target_directory'), kwargs.get('use_cache'))
     collect_count = 0
     for illust_path in illust_paths:
         if not os.path.isfile(illust_path):
@@ -232,83 +246,16 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
     log.info('----> total move file count: {}'.format(collect_count))
 
 
-def get_user_id_by_illust_id(illust_id: int) -> int:
-    illust: Illustration = session.query(Illustration).get(illust_id)
-    if not illust:
-        log.warn('The illust is not exist. illust_id: {}'.format(illust_id))
-        return 0
-    return illust.user_id
-
-
-def check_user_id(directory: str):
-    if not os.path.isdir(directory):
-        log.error('The directory is not exist. directory: {}'.format(directory))
-        return None
-    illust_files = os.listdir(directory)
-    illustrations = []
-    user_id_illust_count = {}
-    for illust_file in illust_files:
-        illust_file_path = os.path.join(directory, illust_file)
-        illust_id = get_illust_id(illust_file_path)
-        if illust_id <= 0:
-            log.warn('The illust id is not exist. illust file: {}'.format(illust_file_path))
-            continue
-        illustration: Illustration = session.query(Illustration).get(illust_id)
-        if illustration is None:
-            log.warn('The illustration is not exist. illust_id: {}'.format(illust_id))
-            continue
-        illustrations.append({
-            'id': illustration.id,
-            'user_id': illustration.user_id,
-            'path': illust_file_path
-        })
-        log.info('user_id: {}, current path: {}'.format(illustration.user_id, illust_file))
-        source_illust_file_path = os.path.abspath(illust_file_path)
-        move_target_file_path = os.path.join(os.path.dirname(source_illust_file_path), str(illustration.user_id))
-        if not os.path.isdir(move_target_file_path):
-            os.makedirs(move_target_file_path)
-        move_target_file_path = os.path.join(move_target_file_path, illust_file)
-        os.replace(source_illust_file_path, move_target_file_path)
-    log.info('check end. size: {}'.format(len(illustrations)))
-
-
-def move_small_file(target_directory: str):
-    min_image_size = 3e5  # 最小图片大小
-    # move_directory = r'H:\Pictures\动漫图片\small-2'
-    move_directory = os.path.join(target_directory, 'small')
-    if not os.path.isdir(move_directory):
-        os.makedirs(move_directory)
-
-    image_paths = get_all_image_paths(target_directory)
-    log.info('total image file size: {}'.format(len(image_paths)))
-    for image_path in image_paths:
-        if os.path.isfile(image_path):
-            move_target_path = os.path.join(move_directory, os.path.split(image_path)[1])
-            if os.path.isfile(move_target_path):
-                log.warn('The file is exist. can not move: {}'.format(image_path))
-                continue
-            try:
-                file_handle = open(image_path, 'rb')
-                image = Image.open(file_handle)
-                file_handle.close()  # 必须关闭文件句柄，否则无法移动文件
-                if (image.width < 1200 and image.height < 1200) or os.path.getsize(image_path) <= min_image_size:
-                    log.info('The file size is small, file: {}, size: {}, width: {}, height: {}'
-                             .format(image_path, os.path.getsize(image_path), image.width, image.height))
-                    log.info('remove file from: {} ---> to: {}'.format(image_path, move_target_path))
-                    os.replace(image_path, move_target_path)
-            except (PermissionError, PIL.UnidentifiedImageError, FileNotFoundError):
-                log.error('PermissionError, file: {}'.format(image_path))
-
-
 if __name__ == '__main__':
     # illust_id = 60881929
     # user_id = get_user_id_by_illust_id(illust_id)
 
-    # user_id = 490219
-    # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id)
-    target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts'
-    move_small_file(target_directory)
-    # collect_illusts(r'orange', is_main_color, 50, color='orange')
-    # update_illust_tag(target_directory, 'lose')
+    user_id = 935581
+    collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id, use_cache=False)
+    # target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore'
+    # collect_illusts(r'ignore', is_small_size, 10)  #  ゴスロリ  雪  バロック世界  ワンピース服  動物擬人化 雪風  セーラー服
+    # update_illust_tag(target_directory, 'ignore')   # 玉藻の前
     # check_user_id(target_directory)
     # extract_top(target_directory, 20)
+
+    # 本地映射与去重
