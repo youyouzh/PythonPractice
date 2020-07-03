@@ -9,6 +9,7 @@ import threadpool
 import u_base.u_log as log
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, query_top_total_bookmarks
 from spider.pixiv.pixiv_api import AppPixivAPI
+from spider.pixiv.arrange.file_util import read_file_as_list
 
 CONFIG = json.load(open(os.path.join(os.getcwd(), r'config\config.json')))
 _USERNAME = CONFIG.get('username')
@@ -51,22 +52,22 @@ def download_task(pixiv_api, directory, url=None, illustration_image: Illustrati
     log.info('download image end. cast: {}, url: {}'.format(time.time() - begin_time, url))
 
 
-# 从文件中获取下载链接
-def get_download_url_from_file():
-    # 读取需要下载的URL
-    url_list = []
-    download_urls_file = 'download_urls.txt'
-    file_handler = open(download_urls_file)
-    line = file_handler.readline()
-    while line:
-        line = line.strip('\n')
-        if line and line != '':
-            url_list.append(line)
-        line = file_handler.readline()
-    return url_list
+# 使用线程池并行下载
+def download_by_pool(directory, urls=None):
+    # 创建文件夹
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    pixiv_api = AppPixivAPI()
+    pixiv_api.login(_USERNAME, _PASSWORD)
+    log.info('begin download image, url size: ' + str(len(urls)))
+    pool = threadpool.ThreadPool(8)
+    params = map(lambda v: (None, {'pixiv_api': pixiv_api, 'directory': directory, 'url': v}), urls)
+    task_list = threadpool.makeRequests(download_task, params)
+    [pool.putRequest(task) for task in task_list]
+    pool.wait()
 
 
-# 从本地数据查找URL，然后下载图片
+# 通过pixiv_id下载图片，从本地数据查找URL，然后下载图片
 def download_by_illustration_id(pixiv_api, directory: str, illustration_id: int):
     log.info('begin download illust by illustration_id: {}'.format(illustration_id))
     illustration: Illustration = session.query(Illustration).get(illustration_id)
@@ -108,13 +109,14 @@ def download_by_illustration_id(pixiv_api, directory: str, illustration_id: int)
              .format(illustration_id, len(illustration_images)))
 
 
-def download_by_user_id(save_directory, user_id: int):
+# 下载某个用户的图片，基于本地数据库
+def download_by_user_id(save_directory, user_id: int, min_total_bookmarks=5000):
     log.info('begin download illust by user_id: {}'.format(user_id))
     pixiv_api = AppPixivAPI()
     pixiv_api.login(_USERNAME, _PASSWORD)
     illustrations: [Illustration] = session.query(Illustration)\
         .filter(Illustration.user_id == user_id)\
-        .filter(Illustration.total_bookmarks >= 5000)\
+        .filter(Illustration.total_bookmarks >= min_total_bookmarks)\
         .order_by(Illustration.total_bookmarks.desc()).all()
     if illustrations is None or len(illustrations) <= 0:
         log.warn('The illustrations is empty. user_id: {}'.format(user_id))
@@ -123,6 +125,22 @@ def download_by_user_id(save_directory, user_id: int):
     for illustration in illustrations:
         download_by_illustration_id(pixiv_api, save_directory, illustration.id)
     log.info('end download illust by user_id: {}'.format(user_id))
+
+
+# 下载某个tag标签的图片，基于本地数据库
+def download_by_tag(save_directory, tag: str, min_total_bookmarks=5000):
+    log.info('begin download illust by tag: {}'.format(tag))
+    pixiv_api = AppPixivAPI()
+    pixiv_api.login(_USERNAME, _PASSWORD)
+    illustrations: [Illustration] = session.query(Illustration) \
+        .filter(Illustration.id.in_(
+            session.query(IllustrationTag.illust_id).filter(IllustrationTag.name == tag))) \
+        .filter(Illustration.total_bookmarks >= min_total_bookmarks) \
+        .order_by(Illustration.total_bookmarks.desc()).all()
+    log.info('The illustration of tag: {} count is: {}'.format(tag, len(illustrations)))
+    for illustration in illustrations:
+        download_by_illustration_id(pixiv_api, save_directory, illustration.id)
+    log.info('end download illust by tag: {}'.format(tag))
 
 
 # 获取整数倍 2324 -> [2000, 3000]
@@ -148,43 +166,26 @@ def download_top():
         log.info('end download illust: {}'.format(top_illust))
 
 
-# 下载P站图片
-def download():
+# 从文件中读取P站图片下载地址（每一行一个URL），并从P站下载
+def download_from_url_files(url_file_path, save_directory):
     # 创建文件夹
-    directory = r"result/images/35-40/"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    if not os.path.exists(save_directory):
+        os.makedirs(save_directory)
     pixiv_api = AppPixivAPI()
     pixiv_api.login(_USERNAME, _PASSWORD)
-    url_list = get_download_url_from_file()
+    url_list = read_file_as_list(url_file_path)
     log.info('begin download image, url size: ' + str(len(url_list)))
     index = 0
     for url in url_list:
         log.info('index: ' + str(index))
-        download_task(pixiv_api, directory, url)
+        download_task(pixiv_api, save_directory, url)
         index += 1
-
-
-# 使用线程池并行下载
-def download_by_pool():
-    # 创建文件夹
-    directory = r"result/images/2012-2016-1000-1500/"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    pixiv_api = AppPixivAPI()
-    pixiv_api.login(_USERNAME, _PASSWORD)
-    url_list = get_download_url_from_file()
-    log.info('begin download image, url size: ' + str(len(url_list)))
-    pool = threadpool.ThreadPool(8)
-    params = map(lambda v: (None, {'pixiv_api': pixiv_api, 'directory': directory, 'url': v}), url_list)
-    task_list = threadpool.makeRequests(download_task, params)
-    [pool.putRequest(task) for task in task_list]
-    pool.wait()
 
 
 if __name__ == '__main__':
     # download_by_pool()
-    # download_top()
-    user_id = 40614
-    save_file = os.path.join(r'.\result\favorite\40614-望月しいな-博丽灵梦', str(user_id))
-    download_by_user_id(save_file, user_id)
+    tag = '四宮かぐや'
+    download_by_tag(os.path.join(r'.\result\by-tag', tag), tag)
+    # user_id = 792198  # 5323203
+    # save_file = os.path.join(r'.\result\by-user', str(user_id))
+    # download_by_user_id(save_file, user_id)

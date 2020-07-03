@@ -9,6 +9,7 @@ pymysql
 SQLAlchemy
 
 # for image classification, deep learning libs
+pandas
 numpy
 scipy
 matplotlib
