@@ -42,7 +42,7 @@ def through_pose(url):
         pose_url = url_template % index
         name = re.sub(r"[\\/?*<>|\":]+", '', pose_url.replace(r'http://www.posemaniacs.com/pose/', ''))
         log.info('begin download image from url: {}'.format(pose_url))
-        download_status = u_file.download_image(pose_url, name=name)
+        download_status = u_file.download_image(pose_url, name=name, path=path)
         if not download_status:
             break
 
