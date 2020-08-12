@@ -5,6 +5,7 @@ requests
 pillow
 threadpool
 beautifulsoup4
+lxml
 pymysql
 SQLAlchemy
 
