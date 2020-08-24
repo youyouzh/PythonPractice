@@ -9,6 +9,12 @@ from bs4 import BeautifulSoup
 import u_base.u_log as log
 import u_base.u_file as u_file
 
+CONFIG = {
+    'crawl_max_count': 10,
+    'host': 'http://www.posemaniacs.com',
+    'page_url_template': '/page/%d',
+}
+
 
 # 提取
 def extract_pose_urls(html_content):
@@ -26,7 +32,7 @@ def extract_pose_urls(html_content):
         pose_url = pose_img_node['src']
         if pose_url and pose_url != '':
             pose_url = pose_url.replace('_thumb', '')
-            pose_url = 'http://www.posemaniacs.com' + pose_url
+            pose_url = CONFIG.get('host') + pose_url
             pose_urls.append(pose_url)
     log.info('extract pos urls success. size: {}'.format(len(pose_urls)))
     return pose_urls
@@ -38,17 +44,32 @@ def through_pose(url):
     path = os.path.abspath(r'./result')
     if not os.path.isdir(path):
         os.mkdir(path)
-    for index in range(1, 20):
+    for index in range(1, 50):
         pose_url = url_template % index
-        name = re.sub(r"[\\/?*<>|\":]+", '', pose_url.replace(r'http://www.posemaniacs.com/pose/', ''))
+        name = re.sub(r"[\\/?*<>|\":]+", '-', pose_url.replace(r'http://www.posemaniacs.com/pose/', ''))
         log.info('begin download image from url: {}'.format(pose_url))
         download_status = u_file.download_image(pose_url, name=name, path=path)
         if not download_status:
+            log.info('download end. index: {}'.format(index))
             break
 
 
+def crawler():
+    log.info('------begin crawler------')
+    crawl_count = 1
+    begin_url = CONFIG.get('host') + (CONFIG.get("page_url_template") % crawl_count)
+    html_content = u_file.get_content(begin_url)
+    while html_content and crawl_count <= CONFIG.get('crawl_max_count'):
+        pose_image_urls = extract_pose_urls(html_content)
+        log.info("extract pose image urls success. size: {}".format(len(pose_image_urls)))
+        for pose_image_url in pose_image_urls:
+            log.info("begin crawl from pose image url: {}".format(pose_image_url))
+            through_pose(pose_image_url)
+            log.info("end crawl from pose image url: {}".format(pose_image_url))
+        crawl_count += 1
+        html_content = u_file.get_content(CONFIG.get("page_url_template") % crawl_count)
+    log.info('------end crawler------')
+
+
 if __name__ == '__main__':
-    html_content = u_file.get_content(os.path.abspath('./page/index.html'))
-    pose_img_urls = extract_pose_urls(html_content)
-    for pose_image_url in pose_img_urls:
-        through_pose(pose_image_url)
+    crawler()
