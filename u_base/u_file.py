@@ -55,18 +55,21 @@ def download_image(url, path=os.path.curdir, name=None, replace=False, prefix=''
         name = prefix + name
 
     image_path = os.path.join(path, name)
-    if (not os.path.exists(image_path)) or replace:
-        # Write stream to file
-        log.info('begin download image from url: {}'.format(url))
-        try:
-            response = requests.get(url, stream=True)
-            with open(image_path, 'wb') as out_file:
-                out_file.write(response.content)
-            del response
-        except Exception as e:
-            log.error('download image file. {}'.format(e))
-            return False
-        log.info('end download image. save file: {}'.format(image_path))
+    if os.path.exists(image_path) and not replace:
+        log.info('The file is exist and not replace: {}'.format(image_path))
+        return True
+
+    # Write stream to file
+    log.info('begin download image from url: {}'.format(url))
+    try:
+        response = requests.get(url, stream=True)
+        with open(image_path, 'wb') as out_file:
+            out_file.write(response.content)
+        del response
+    except Exception as e:
+        log.error('download image file. {}'.format(e))
+        return False
+    log.info('end download image. save file: {}'.format(image_path))
     return True
 
 
