@@ -44,7 +44,7 @@ def through_pose(url):
     path = os.path.abspath(r'./result')
     if not os.path.isdir(path):
         os.mkdir(path)
-    for index in range(1, 50):
+    for index in range(1, 5):
         pose_url = url_template % index
         name = re.sub(r"[\\/?*<>|\":]+", '-', pose_url.replace(r'http://www.posemaniacs.com/pose/', ''))
         log.info('begin download image from url: {}'.format(pose_url))
@@ -67,7 +67,7 @@ def crawler():
             through_pose(pose_image_url)
             log.info("end crawl from pose image url: {}".format(pose_image_url))
         crawl_count += 1
-        html_content = u_file.get_content(CONFIG.get("page_url_template") % crawl_count)
+        html_content = u_file.get_content(CONFIG.get('host') + (CONFIG.get("page_url_template") % crawl_count))
     log.info('------end crawler------')
 
 
