@@ -33,7 +33,8 @@ def get_content(path):
         if not (400 <= response.status_code < 500):
             response.raise_for_status()
         return response.text
-    except Exception:
+    except Exception as e:
+        log.info('get content fail. {}'.format(e))
         return False
 
 
