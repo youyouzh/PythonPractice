@@ -5,6 +5,7 @@
 import os
 import re
 import u_base.u_log as log
+import u_base.u_file as u_file
 
 
 __all__ = [
@@ -15,7 +16,6 @@ __all__ = [
     'get_illust_id',
     'collect_illust',
     'get_directory_illusts',
-    'get_all_sub_files',
     'get_all_image_paths'
 ]
 
@@ -23,7 +23,7 @@ __all__ = [
 def get_base_path(path_name: str = None):
     """
     返回所有相对illust处理的基础路径，使用绝对路径，避免在不同地方调用时路径错误
-    :param path_name: path名词，
+    :param path_name: 相对路径，
     :return:
     """
     base_path = os.path.abspath(os.path.dirname(__file__))
@@ -137,42 +137,12 @@ def get_all_image_paths(image_directory: str, use_cache: bool = True) -> list:
     if not os.path.isdir(os.path.split(cache_file_path)[0]):
         log.info('create the cache directory: {}'.format(cache_file_path))
         os.makedirs(os.path.split(cache_file_path)[0])
-    all_files = get_all_sub_files(image_directory)
+    all_files = u_file.get_all_sub_files(image_directory)
     cache_file_path_handler = open(cache_file_path, 'w+', encoding='utf-8')
     for file in all_files:
         cache_file_path_handler.writelines(file + '\n')
     cache_file_path_handler.close()
     log.info('get_all_image_files finish. file size: {}'.format(len(all_files)))
-    return all_files
-
-
-def get_all_sub_files(root_path, all_files=None):
-    """
-    递归获取所有子文件列表
-    :param root_path: 递归根目录
-    :param all_files: 递归过程中的所有文件列表
-    :return:
-    """
-    if all_files is None:
-        all_files = []
-
-    # root_path 不是目录直接返回file_list
-    if not os.path.isdir(root_path):
-        return all_files
-    else:
-        log.info('begin through path: {}'.format(root_path))
-
-    # 获取该目录下所有的文件名称和目录名称
-    dir_or_files = os.listdir(root_path)
-    for dir_or_file in dir_or_files:
-        dir_or_file = os.path.join(root_path, dir_or_file)  # 拼接得到完整路径
-
-        if os.path.isdir(dir_or_file):
-            # 如果是文件夹，则递归遍历
-            get_all_sub_files(dir_or_file, all_files)
-        else:
-            # 否则将当前文件加入到 all_files
-            all_files.append(os.path.abspath(dir_or_file))
     return all_files
 
 

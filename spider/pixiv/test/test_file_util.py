@@ -22,9 +22,3 @@ def test_get_illust_id():
 def test_get_all_image_file_path():
     count = len(get_all_image_file_path())
     u_unittest.assert_lt(0, count)
-
-
-def test_get_all_sub_files():
-    directory = r'H:\Pictures\动漫插画\未整理'
-    all_files = get_all_sub_files(directory)
-    u_unittest.assert_lt(20, len(all_files))

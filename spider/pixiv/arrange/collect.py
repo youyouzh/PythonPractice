@@ -250,11 +250,11 @@ if __name__ == '__main__':
     # illust_id = 60881929
     # user_id = get_user_id_by_illust_id(illust_id)
 
-    user_id = 935581
-    collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id, use_cache=False)
-    # target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore'
-    # collect_illusts(r'ignore', is_small_size, 10)  #  ゴスロリ  雪  バロック世界  ワンピース服  動物擬人化 雪風  セーラー服
-    # update_illust_tag(target_directory, 'ignore')   # 玉藻の前
+    # user_id = 935581
+    # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id, use_cache=False)
+    target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore'
+    # collect_illusts(r'ignore', is_small_size, 10)  # ゴスロリ  雪  バロック世界  ワンピース服  動物擬人化 雪風  セーラー服
+    update_illust_tag(target_directory, 'ignore')
     # check_user_id(target_directory)
     # extract_top(target_directory, 20)
 
