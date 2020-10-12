@@ -16,7 +16,15 @@ CONFIG = {
 }
 
 
-# 提取
+# 为了区分新办的人体图，比较侵清晰
+PATH_MAP = {
+    'm4_': 'result-m4',
+    'f4_': 'result-f4',
+    'v4_': 'result-v4',
+}
+
+
+# 从HTML中提取下载地址
 def extract_pose_urls(html_content):
     if not html_content:
         log.info('The html content is not valid.')
@@ -38,6 +46,7 @@ def extract_pose_urls(html_content):
     return pose_urls
 
 
+# 提取和下载不同角度的图片
 def through_pose(url):
     log.info('begin through url'.format(url))
     url_template = url.replace('pose_0001', 'pose_%04d')
@@ -47,6 +56,12 @@ def through_pose(url):
     for index in range(1, 5):
         pose_url = url_template % index
         name = re.sub(r"[\\/?*<>|\":]+", '-', pose_url.replace(r'http://www.posemaniacs.com/pose/', ''))
+
+        # 名称分组文件夹
+        for (path_key, path_value) in PATH_MAP:
+            if name.find(path_key):
+                path = path.replace('result', path_value)
+                break
         log.info('begin download image from url: {}'.format(pose_url))
         download_status = u_file.download_image(pose_url, name=name, path=path)
         if not download_status:
@@ -71,5 +86,18 @@ def crawler():
     log.info('------end crawler------')
 
 
+def arrange():
+    image_paths = os.path.abspath(r'./result')
+    sub_files = u_file.get_all_sub_files(image_paths)
+    log.info('The sub files size is :{}'.format(len(sub_files)))
+    for sub_file in sub_files:
+        # 按照名称和映射关系分组
+        for (path_key, path_value) in PATH_MAP:
+            if sub_file.find(path_key):
+                move_target_file = sub_file.replace('result', path_value)
+                log.info('move the file from: {} -> {}'.format(sub_file, move_target_file))
+                os.replace(sub_file, move_target_file)
+
+
 if __name__ == '__main__':
-    crawler()
+    arrange()
