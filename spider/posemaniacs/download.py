@@ -21,6 +21,8 @@ PATH_MAP = {
     'm4_': 'result-m4',
     'f4_': 'result-f4',
     'v4_': 'result-v4',
+    'k4_': 'result-k4',
+    'F4_': 'result-F4',
 }
 
 
@@ -58,8 +60,8 @@ def through_pose(url):
         name = re.sub(r"[\\/?*<>|\":]+", '-', pose_url.replace(r'http://www.posemaniacs.com/pose/', ''))
 
         # 名称分组文件夹
-        for (path_key, path_value) in PATH_MAP:
-            if name.find(path_key):
+        for (path_key, path_value) in PATH_MAP.items():
+            if name.find(path_key) >= 0:
                 path = path.replace('result', path_value)
                 break
         log.info('begin download image from url: {}'.format(pose_url))
@@ -92,11 +94,14 @@ def arrange():
     log.info('The sub files size is :{}'.format(len(sub_files)))
     for sub_file in sub_files:
         # 按照名称和映射关系分组
-        for (path_key, path_value) in PATH_MAP:
-            if sub_file.find(path_key):
+        for (path_key, path_value) in PATH_MAP.items():
+            if sub_file.find(path_key) >= 0:
                 move_target_file = sub_file.replace('result', path_value)
                 log.info('move the file from: {} -> {}'.format(sub_file, move_target_file))
+                if not os.path.isdir(os.path.dirname(move_target_file)):
+                    os.makedirs(os.path.dirname(move_target_file))
                 os.replace(sub_file, move_target_file)
+                break
 
 
 if __name__ == '__main__':
