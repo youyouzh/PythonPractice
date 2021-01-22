@@ -1,0 +1,54 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*
+import os
+
+import u_base.u_file as u_file
+import u_base.u_log as u_log
+
+
+def test_get_all_sub_files():
+    root_path = r'D:\BaiduNetdiskDownload\最新免费国外hdr环境高清贴图批量下载_By佐邦视觉'
+    file_paths = u_file.get_all_sub_files(root_path)
+    u_log.info('file size: {}'.format(len(file_paths)))
+
+
+# 遍历所有子文件，然后移动到另一个地方
+def test_collect_sub_files():
+    source_root_directory = r'D:\data\HDRI贴图资源\专业4K全景HDRI贴图合辑\HDR'
+    move_target_directory = r'D:\data\HDRI贴图资源\专业4K全景HDRI贴图合辑'
+    if not os.path.isdir(move_target_directory):
+        # 文件不存在则创建
+        os.makedirs(move_target_directory)
+    sub_file_paths = u_file.get_all_sub_files(source_root_directory)
+
+    for sub_file_path in sub_file_paths:
+        if os.path.isdir(sub_file_path):
+            u_log.info('The file is directory: {}'.format(sub_file_path))
+            continue
+        sub_file_name = os.path.split(sub_file_path)[1]
+        sub_file_name_suffix = os.path.splitext(sub_file_name)[1]
+        if sub_file_name_suffix != '.jpg' and sub_file_name_suffix != '.hdr':
+            u_log.info('The file is not hdr file: {}'.format(sub_file_name))
+            continue
+
+        move_target_file_path = os.path.join(move_target_directory, sub_file_name)
+        if os.path.isfile(move_target_file_path):
+            u_log.warn('The move target file is exist: {}'.format(move_target_file_path))
+            continue
+
+        u_log.info('move file: {} --> file: {}'.format(sub_file_path, move_target_file_path))
+        os.replace(sub_file_path, move_target_file_path)
+
+
+def test_replace_file_name():
+    source_root_directory = r'D:\BaiduNetdiskDownload\Dutch Skies 360 Volume'
+    sub_file_paths = u_file.get_all_sub_files(source_root_directory)
+
+    for sub_file_path in sub_file_paths:
+        move_target_file_path = sub_file_path.replace('_佐邦视觉', '')
+        if os.path.isfile(move_target_file_path):
+            u_log.warn('The target file is exist: {}'.format(move_target_file_path))
+            continue
+
+        u_log.info('rename file: {} --> file: {}'.format(sub_file_path, move_target_file_path))
+        os.replace(sub_file_path, move_target_file_path)
