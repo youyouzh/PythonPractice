@@ -4,6 +4,8 @@
 
 
 import os
+import time
+import json
 import requests
 from PIL import Image
 
@@ -13,11 +15,18 @@ __all__ = [
     'get_content',
     'download_image',
     'convert_image_format',
-    'get_all_sub_files'
+    'get_all_sub_files',
+    'read_content',
+    'write_content'
 ]
 
 
 def get_content(path):
+    """
+    read content from file or url
+    :param path: file or url
+    :return: file or url content
+    """
     if not path:
         return False
     # if path is file, read from file
@@ -39,6 +48,38 @@ def get_content(path):
     except Exception as e:
         log.info('get content fail. {}'.format(e))
         return False
+
+
+def read_content(file_path):
+    """
+    read content from file, use UTF-8 encoding
+    :param file_path: target file path
+    :return: file content
+    """
+    if not os.path.isfile(file_path):
+        log.warn('The file is not exist')
+        return None
+    log.info('read content from file: {}'.format(file_path))
+    fin = open(file_path, 'r', encoding='UTF-8')
+    content = fin.read()
+    fin.close()
+    return content
+
+
+def write_content(file_path, content) -> str:
+    """
+    write content to file, use UTF-8 encoding and overwrite
+    :param file_path: target file path
+    :param content: write content
+    :return: file_path
+    """
+    dir_path = os.path.dirname(file_path)
+    if not os.path.isdir(dir_path):
+        log.info('the file path is not exist. create: {}'.format(dir_path))
+    fout = open(file_path, 'w', encoding='UTF-8')
+    fout.write(content)
+    fout.close()
+    return file_path
 
 
 # download image from url
@@ -73,6 +114,46 @@ def download_image(url, path=os.path.curdir, name=None, replace=False, prefix=''
         log.error('download image file. {}'.format(e))
         return False
     log.info('end download image. save file: {}'.format(image_path))
+    return True
+
+
+def download_file(url, file_name, path=os.path.curdir, replace=False, **kwargs):
+    """
+    download file from url
+    :param url: image_url
+    :param path: save directory path
+    :param file_name: image name
+    :param replace: replace the same name file.
+    :return:
+    """
+    if not file_name:
+        file_name = os.path.basename(url)
+    elif os.path.splitext(file_name)[-1].find('.') < 0:
+        # 所给文件名不带后缀的话，添加上后缀
+        file_name += os.path.splitext(url)[-1]
+
+    # 指定文件夹不存在则创建
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+    file_path = os.path.join(path, file_name)
+
+    # 如果文件已经下载并且不替换，则直接结束
+    if os.path.exists(file_path) and not replace:
+        log.info('The file is exist and not replace: {}'.format(file_path))
+        return True
+
+    # Write stream to file
+    log.info('begin download file from url: {}'.format(url))
+    try:
+        response = requests.get(url, stream=True, **kwargs)
+        with open(file_path, 'wb') as out_file:
+            out_file.write(response.content)
+        del response
+    except Exception as e:
+        log.error('download file file. {}'.format(e))
+        return False
+    log.info('end download file. save file: {}'.format(file_path))
     return True
 
 
@@ -124,3 +205,26 @@ def get_all_sub_files(root_path, all_files=None):
             # 否则将当前文件加入到 all_files
             all_files.append(os.path.abspath(dir_or_file))
     return all_files
+
+
+def parse_json(json_str):
+    """parse json str into dict"""
+    return json.loads(json_str)
+
+
+def cache_json(json_data, cache_file=None) -> str:
+    if not cache_file:
+        cache_file = os.path.join(os.getcwd(), 'cache')
+        cache_file = os.path.join(cache_file, 'cache-' + time.strftime('%Y-%m-%d-%H-%M-%S',
+                                                                       time.localtime(time.time())) + '.json')
+    cache_file_dir = os.path.split(cache_file)[0]
+    if not os.path.isdir(cache_file_dir):
+        os.makedirs(cache_file_dir)
+    json.dump(json_data, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    return cache_file
+
+
+def load_json_from_file(json_file):
+    if os.path.isfile(json_file):
+        return json.load(open(json_file, encoding='utf-8'))
+    return None

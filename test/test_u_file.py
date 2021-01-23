@@ -4,6 +4,29 @@ import os
 
 import u_base.u_file as u_file
 import u_base.u_log as u_log
+import u_base.u_unittest as u_unittest
+
+
+def test_cache_json():
+    json_data = {'a': 1, 'b': 2}
+    cache_file = u_file.cache_json(json_data)
+    u_unittest.assert_true(os.path.isfile(cache_file))
+
+
+def test_read_write_file():
+    content = '--something--'
+    file_path = r'cache\test.dat'
+    file_path = os.path.abspath(file_path)
+    u_file.write_content(file_path, content)
+    u_unittest.assert_eq(content, u_file.read_content(file_path))
+
+
+def test_download_file():
+    url = 'http://aod.cos.tx.xmcdn.com/group20/M01/7E/F8/wKgJJ1eoW8uBquKEACmsecPrn1o863.m4a'
+    file_name = '19663334'
+    file_path = r'cache'
+    u_file.download_file(url, file_name, file_path)
+    u_unittest.assert_true(os.path.isfile(r'cache\19663334.m4a'))
 
 
 def test_get_all_sub_files():
