@@ -19,6 +19,24 @@ HEADERS = {
 }
 
 
+# 裁剪右边的秒数
+CLIP_INFO = {
+    '合集From everywhere 1日目': '15:30',
+    '合集From everywhere 2日目': '19:11',
+    '合集From everywhere 3日目': '7:50',
+    '合集From everywhere 4日目': '08:03',
+    '合集From everywhere 5日目': '11:24',
+    '合集From everywhere 6日目': '05:50',
+    '合集From everywhere 7日目': '13:65',
+    '合集From everywhere 8日目': '03:48',
+    '合集From everywhere 9日目': '18:35',
+    '合集From everywhere 10日目': '16:20',
+    '合集From everywhere 11日目': '09:30',
+    '合集From everywhere 12日目': '13:34',
+    '合集From everywhere 13日目': '18:04'
+}
+
+
 def get_album_track_info_page(album_id, page_id, page_size=20) -> dict:
     page_param = {
         'ac': 'WIFI',
