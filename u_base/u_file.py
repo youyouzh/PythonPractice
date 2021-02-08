@@ -50,6 +50,18 @@ def get_content(path):
         return False
 
 
+def get_json(url, params=None, headers=None) -> dict:
+    """
+    request json from url
+    :param url: url
+    :param params: params
+    :param headers: headers
+    :return: json
+    """
+    response = requests.get(url, params=params, headers=headers)
+    return json.loads(response.text)
+
+
 def read_content(file_path):
     """
     read content from file, use UTF-8 encoding
