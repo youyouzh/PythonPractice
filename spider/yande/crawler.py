@@ -11,17 +11,20 @@ CRAWL_URLS = {
 }
 
 
-def get_post_info():
+def get_post_info() -> list:
     params = {
         'page': 1,
         'limit': 100
     }
-    post_infos = u_file.get_json(CRAWL_URLS.get('post'), params)
-    u_log.info('post size: {}'.format(len(post_infos)))
-    for post_info in post_infos:
-        save_post(post_info)
-        u_log.info('save post success. post_id: {}'.format(post_info.get('id')))
-    return post_info
+    posts = u_file.get_json(CRAWL_URLS.get('post'), params)
+    if not isinstance(posts, list):
+        u_log.warn("The response is not post list.")
+        return []
+    u_log.info('post size: {}'.format(len(posts)))
+    for post in posts:
+        save_post(post)
+        u_log.info('save post success. post_id: {}'.format(post.get('id')))
+    return posts
 
 
 if __name__ == '__main__':
