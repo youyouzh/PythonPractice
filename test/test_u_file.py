@@ -21,6 +21,11 @@ def test_read_write_file():
     u_unittest.assert_eq(content, u_file.read_content(file_path))
 
 
+def test_get_file_name_from_url():
+    url = 'https://files.yande.in/image/yande.re%20485154%20bra%20breasts%20nipples%20nurse%20thighhighs.png'
+    u_unittest.assert_eq('yande.re 485154 bra breasts nipples nurse thighhighs.png', u_file.get_file_name_from_url(url))
+
+
 def test_download_file():
     url = 'http://aod.cos.tx.xmcdn.com/group20/M01/7E/F8/wKgJJ1eoW8uBquKEACmsecPrn1o863.m4a'
     file_name = '19663334'
