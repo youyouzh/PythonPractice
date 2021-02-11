@@ -3,7 +3,7 @@ import requests
 
 from u_base import u_file
 from u_base import u_log
-from db import save_post
+from db import save_post, query_top_score_posts, mark_post, query_post
 
 
 CRAWL_URLS = {
@@ -11,10 +11,11 @@ CRAWL_URLS = {
 }
 
 
-def get_post_info() -> list:
+def get_post_info(page) -> list:
     params = {
-        'page': 1,
-        'limit': 100
+        'page': page,
+        'limit': 100,
+        # 'tags': 'chintora0201'
     }
     posts = u_file.get_json(CRAWL_URLS.get('post'), params)
     if not isinstance(posts, list):
@@ -27,5 +28,33 @@ def get_post_info() -> list:
     return posts
 
 
+def crawl_post():
+    max_page = 10000
+    begin_page = 4155
+    # -- not tags page:2927,  open_shirt 285
+    while begin_page < max_page:
+        u_log.info('-->begin crawl page: {}'.format(begin_page))
+        posts = get_post_info(begin_page)
+        if len(posts) == 0:
+            u_log.info('all page have been crawled.')
+            return
+        u_log.info('-->end crawl page: {}, count: {}'.format(begin_page, len(posts)))
+        begin_page += 1
+
+
+def download_top():
+    posts = query_top_score_posts(10000)
+    directory = r'result'
+    for post in posts:
+        post = query_post(post.get('id'))
+        if post.mark == 'downloaded':
+            u_log.info('the post has been downloaded. id: {}'.format(post.id))
+            continue
+        u_log.info('begin download post. id: {}, score: {}, size: {}'.format(post.id, post.score, post.file_size))
+        file_name = u_file.get_file_name_from_url(post.file_url)
+        u_file.download_file(post.file_url, file_name, directory)
+        mark_post(post, 'downloaded')
+
+
 if __name__ == '__main__':
-    get_post_info()
+    download_top()
