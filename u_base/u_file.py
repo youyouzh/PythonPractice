@@ -6,19 +6,33 @@
 import os
 import time
 import json
+import urllib.parse
 import requests
+import threadpool
 from PIL import Image
 
 import u_base.u_log as log
 
 __all__ = [
     'get_content',
+    'get_json',
+    'read_content',
+    'write_content',
+    'get_file_name_from_url',
     'download_image',
+    'download_file',
+    'download_by_pool',
     'convert_image_format',
     'get_all_sub_files',
-    'read_content',
-    'write_content'
+    'parse_json',
+    'cache_json',
+    'load_json_from_file'
 ]
+
+COMMON_HEADERS = {
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+                  'Chrome/88.0.4324.146 Safari/537.36'
+}
 
 
 def get_content(path):
@@ -58,7 +72,11 @@ def get_json(url, params=None, headers=None) -> dict:
     :param headers: headers
     :return: json
     """
-    response = requests.get(url, params=params, headers=headers)
+    try:
+        response = requests.get(url, params=params, headers=headers)
+    except Exception as e:
+        log.warn('request error and try again. {}'.format(e))
+        response = requests.get(url, params=params, headers=headers)
     return json.loads(response.text)
 
 
@@ -129,6 +147,11 @@ def download_image(url, path=os.path.curdir, name=None, replace=False, prefix=''
     return True
 
 
+def get_file_name_from_url(url):
+    file_name = os.path.basename(url)
+    return urllib.parse.unquote(file_name)
+
+
 def download_file(url, file_name, path=os.path.curdir, replace=False, **kwargs):
     """
     download file from url
@@ -148,6 +171,7 @@ def download_file(url, file_name, path=os.path.curdir, replace=False, **kwargs):
     if not os.path.isdir(path):
         os.makedirs(path)
 
+    file_name = file_name[:200]  # windows文件名称不能超过255个字符
     file_path = os.path.join(path, file_name)
 
     # 如果文件已经下载并且不替换，则直接结束
@@ -158,7 +182,7 @@ def download_file(url, file_name, path=os.path.curdir, replace=False, **kwargs):
     # Write stream to file
     log.info('begin download file from url: {}'.format(url))
     try:
-        response = requests.get(url, stream=True, **kwargs)
+        response = requests.get(url, stream=True, headers=COMMON_HEADERS, **kwargs)
         with open(file_path, 'wb') as out_file:
             out_file.write(response.content)
         del response
@@ -167,6 +191,19 @@ def download_file(url, file_name, path=os.path.curdir, replace=False, **kwargs):
         return False
     log.info('end download file. save file: {}'.format(file_path))
     return True
+
+
+# 使用线程池并行下载
+def download_by_pool(directory, urls=None, pool_size=8):
+    # 创建文件夹
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    log.info('begin download image, url size: ' + str(len(urls)))
+    pool = threadpool.ThreadPool(pool_size)
+    params = map(lambda v: (None, {'directory': directory, 'url': v}), urls)
+    task_list = threadpool.makeRequests(download_file, params)
+    [pool.putRequest(task) for task in task_list]
+    pool.wait()
 
 
 def convert_image_format(image_path, delete=False):
