@@ -97,6 +97,18 @@ def query_post(post_id):
     return session.query(Post).get(post_id)
 
 
+def query_posts_by_tag(tag, count=1000):
+    cache_file = r'cache\tag_' + tag + '_posts.json'
+    if os.path.isfile(cache_file):
+        return u_file.load_json_from_file(cache_file)
+    results = session.query(Post.id, Post.score) \
+        .filter(Post.tags.like('%{}%'.format(tag))) \
+        .order_by(Post.score.desc()).limit(count).all()
+    results = [dict(zip(v.keys(), v)) for v in results]
+    u_file.cache_json(results, cache_file)
+    return results
+
+
 def mark_post(post, mark):
     post.mark = mark
     session.merge(post)
