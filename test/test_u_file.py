@@ -40,6 +40,25 @@ def test_get_all_sub_files():
     u_log.info('file size: {}'.format(len(file_paths)))
 
 
+# 批量修改图片后缀名，垃圾微信报错GIF图片有问题
+def test_modify_picture_suffix():
+    source_directory = r'D:\data\HDRI贴图资源\专业4K全景HDRI贴图合辑\HDR'
+    sub_file_paths = u_file.get_all_sub_files(source_directory)
+    for sub_file_path in sub_file_paths:
+        if os.path.isdir(sub_file_path):
+            u_log.info('The file is directory: {}'.format(sub_file_path))
+            continue
+        if os.path.getsize(sub_file_path) < 5e6:
+            u_log.info('The file size is small. file: {}, size: {}'.format(sub_file_path, os.path.getsize(sub_file_path)))
+            continue
+        sub_file_name = os.path.split(sub_file_path)[1]
+        sub_file_name_suffix = os.path.splitext(sub_file_name)[1]
+
+        move_target_file_path = sub_file_path.replace(sub_file_name_suffix, ".gif")
+        u_log.info('move file: {} --> file: {}'.format(sub_file_path, move_target_file_path))
+        os.replace(sub_file_path, move_target_file_path)
+
+
 # 遍历所有子文件，然后移动到另一个地方
 def test_collect_sub_files():
     source_root_directory = r'D:\data\HDRI贴图资源\专业4K全景HDRI贴图合辑\HDR'
