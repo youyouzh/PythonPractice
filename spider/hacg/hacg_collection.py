@@ -6,18 +6,20 @@ from bs4 import BeautifulSoup
 
 # global config
 config = {
-    'begin_article': 0, # 开始扫描的文章数，便于继续扫描
-    'max_article': 10,   # 扫描的最大文章数
-    'console_output': True, # 是否控制台输出
-    'template_input_html' : 'page/input.html', # 输入HTML路径，控制显示样式
-    'output_html_path' : 'page/output.html', # 输出HTML路径，空则不输出
-    'output_json_path' : 'page/result.json', # 输出json路径，空则不输出
+    'begin_article': 0,      # 开始扫描的文章数，便于继续扫描
+    'max_article': 10,       # 扫描的最大文章数
+    'console_output': True,  # 是否控制台输出d
+    'template_input_html': 'page/template.html',  # 输入HTML路径，控制显示样式
+    'output_html_path': 'page/output.html',    # 输出HTML路径，空则不输出
+    'output_json_path': 'page/result.json',    # 输出json路径，空则不输出
 }
+
 
 # 控制台统一输出
 def console_print(message):
     if config['console_output']:
         print(message)
+
 
 # get the content from the http url or local path
 def get_content(url = ''):
@@ -29,7 +31,7 @@ def get_content(url = ''):
         html_content = fin.read()
         return html_content
     try:
-        #herders = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; rv:2.0.1) Gecko/20100101 Firefox/4.0.1'}
+        # herders = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; rv:2.0.1) Gecko/20100101 Firefox/4.0.1'}
         console_print('begin get info from web url: ' + url)
         # time.sleep(0.5)
         response = requests.get(url, timeout=60)
@@ -39,6 +41,7 @@ def get_content(url = ''):
         return response.text
     except Exception:
         return False
+
 
 # scan the main page, get all article urls and the next page url
 def scan_main_page(url):
@@ -86,6 +89,7 @@ def scan_main_page(url):
     }
     return page_info
 
+
 # scan article page,get the article info
 def scan_article_page(url):
     html_content = get_content(url)
@@ -124,7 +128,7 @@ def scan_article_page(url):
     magnet_nodes = article_content_node.find_all('p', text=re.compile('[0-9a-zA-Z]{10}[0-9a-zA-Z]+'))
     for node in magnet_nodes:
         magnet_urls.append(node.string)
-    #if not find any magnet code, try find baidupan code or other mystical code
+    # if not find any magnet code, try find baidupan code or other mystical code
     if not magnet_urls:
         mystical_code_nodes = article_content_node.find_all(text=re.compile('[0-9a-zA-Z]{6}'))
         for node in mystical_code_nodes:
@@ -132,6 +136,7 @@ def scan_article_page(url):
     article['magnet'] = magnet_urls
     console_print('end analysis, get images: ' + str(len(image_urls)) + ' magnet: ' + str(len(magnet_urls)))
     return article
+
 
 # begin driver
 def driver(url):
@@ -178,6 +183,7 @@ def driver(url):
     console_print('end write')
     return articles
 
+
 # put the result to html
 def put_to_html(articles):
     if not config['template_input_html'] or not config['output_html_path']:
@@ -218,6 +224,7 @@ def put_to_html(articles):
     # 将HTML页面格式化输出到本地
     fout.write(soup.prettify())
 
+
 # put the result to json
 def put_to_json(articles):
     if not config['output_json_path']:
@@ -225,9 +232,9 @@ def put_to_json(articles):
     fout = open(config['output_json_path'], 'w', encoding='UTF-8')
     json.dump(articles, fout, indent=4, ensure_ascii=False)
 
+
 if __name__ == '__main__':
     home_url = 'http://www.hacg.dog/wp/category/all/game/'
-    home_path = 'page/main.html'
     article_url = 'http://www.hacg.dog/wp/all/game/%E5%AE%98%E6%96%B9%E7%B9%81%E4%B8%ADadult-versionkarakara2/'
     # scan_page(home_url, 0)
     # console_print(scan_main_page(home_url))
