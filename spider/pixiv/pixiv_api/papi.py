@@ -1,13 +1,7 @@
 # -*- coding:utf-8 -*-
 
-import os
-import sys
-import shutil
-import json
-import requests
-
 from .api import BasePixivAPI
-from .utils import PixivError, JsonDict
+from .utils import PixivError
 API_URL = {
     'bad_words': 'https://public-api.secure.pixiv.net/v1.1/bad_words.json',
     'works': 'https://public-api.secure.pixiv.net/v1/works/%d.json',

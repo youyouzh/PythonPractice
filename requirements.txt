@@ -8,6 +8,7 @@ beautifulsoup4
 lxml
 pymysql
 SQLAlchemy
+cloudscraper
 
 # for image classification, deep learning libs
 pandas

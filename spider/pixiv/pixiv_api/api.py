@@ -5,9 +5,8 @@ import os
 from datetime import datetime
 
 import requests
+import cloudscraper
 from PIL import Image
-from requests.adapters import HTTPAdapter
-
 from .utils import PixivError, JsonDict
 
 
@@ -23,9 +22,8 @@ class BasePixivAPI(object):
 
     def __init__(self, **requests_kwargs):
         """initialize requests kwargs if need be"""
-        self.requests = requests.Session()
-        self.requests.mount("http://", HTTPAdapter(max_retries=10))
-        self.requests.mount("https://", HTTPAdapter(max_retries=10))
+        # self.requests = requests.Session()
+        self.requests = cloudscraper.create_scraper()  # fix due to #140
         self.requests_kwargs = requests_kwargs
         self.additional_headers = {}
 
@@ -44,15 +42,7 @@ class BasePixivAPI(object):
 
     def parse_json(self, json_str):
         """parse str into JsonDict"""
-
-        def _obj_hook(pairs):
-            """convert json object to python object"""
-            obj = JsonDict()
-            for k, v in pairs.items():
-                obj[str(k)] = v
-            return obj
-
-        return json.loads(json_str, object_hook=_obj_hook)
+        return json.loads(json_str, object_hook=JsonDict)
 
     def require_auth(self):
         if self.access_token is None:
@@ -93,7 +83,7 @@ class BasePixivAPI(object):
             return self.extract_token(json.load(open(self.response_back_file)))
         local_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+00:00')
         headers = {
-            'User-Agent': 'PixivAndroidApp/5.0.64 (Android 6.0)',
+            'User-Agent': 'PixivAndroidApp/5.0.115 (Android 6.0; PixivBot)',
             'X-Client-Time': local_time,
             'X-Client-Hash': hashlib.md5((local_time + self.hash_secret).encode('utf-8')).hexdigest(),
         }

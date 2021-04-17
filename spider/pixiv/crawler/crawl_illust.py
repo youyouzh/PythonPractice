@@ -15,6 +15,7 @@ from spider.pixiv.mysql.db import save_illustration
 CONFIG = json.load(open(r'config\config.json', encoding='utf-8'))
 _USERNAME = CONFIG.get('username')
 _PASSWORD = CONFIG.get('password')
+_REFRESH_TOKEN = CONFIG.get('token')
 
 
 # 爬取用户收藏列表的图片
@@ -48,7 +49,7 @@ def crawl_user_illusts(user_id):
     page_index = 1
     page_max_size = 20
     pixiv_api = AppPixivAPI()
-    pixiv_api.login(_USERNAME, _PASSWORD)
+    pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     while next_url and page_index < page_max_size:
         log.info('page index: {}'.format(page_index))
         json_result = pixiv_api.user_illusts(user_id)
@@ -69,7 +70,7 @@ def crawl_rank_illust_info():
     log.info('init date_offset_info success. {}'.format(date_offset_info))
 
     pixiv_api = AppPixivAPI()
-    pixiv_api.login(_USERNAME, _PASSWORD)
+    pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     query_date = datetime.datetime.strptime(date_offset_info.get('date'), '%Y-%m-%d').date()
     now = datetime.date.today()
     total_query_count = 0
