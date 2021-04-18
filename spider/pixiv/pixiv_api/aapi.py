@@ -199,16 +199,18 @@ class AppPixivAPI(BasePixivAPI):
     # date: '2016-08-01'
     # mode (Past): [day, week, month, day_male, day_female, week_original, week_rookie,
     #               day_r18, day_male_r18, day_female_r18, week_r18, week_r18g]
-    def illust_ranking(self, mode='day', filter='for_ios', date=None, offset=None, req_auth=True):
+    # filter: for_ios
+    def illust_ranking(self, mode='day', filter=None, date=None, offset=None, req_auth=True):
         url = '%s/v1/illust/ranking' % self.hosts
         params = {
-            'mode': mode,
-            'filter': filter,
+            'mode': mode
         }
         if date:
             params['date'] = date
         if offset:
             params['offset'] = offset
+        if filter:
+            params['filter'] = filter
         response = self.no_auth_requests_call('GET', url, params=params, req_auth=req_auth)
         return self.parse_result(response)
 
