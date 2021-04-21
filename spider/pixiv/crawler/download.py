@@ -181,6 +181,9 @@ def download_top():
     top_illusts = query_top_total_bookmarks(count=50000)
     log.info("download illusts top size: {}".format(len(top_illusts)))
     for top_illust in top_illusts:
+        if top_illust['total_bookmarks'] > 15026:
+            log.info('skip illust: {}'.format(top_illust['id']))
+            continue
         log.info("begin download illust: {}".format(top_illust))
         download_by_illustration_id(pixiv_api, directory, top_illust["id"], skip_min_width=1000, skip_min_height=1000)
         log.info('end download illust: {}'.format(top_illust))
