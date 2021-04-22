@@ -13,6 +13,12 @@ from spider.pixiv.arrange.file_util import read_file_as_list
 
 CONFIG = json.load(open(os.path.join(os.getcwd(), r'config\config.json')))
 _REFRESH_TOKEN = CONFIG.get('token')
+_REQUESTS_KWARGS = {
+    'proxies': {
+      'https': 'http://127.0.0.1:1080',
+    },
+    # 'verify': False,       # PAPI use https, an easy way is disable requests SSL verify
+}
 
 
 # 下载指定地址的图片，可是指定的URL或者IllustrationImage对象
@@ -56,7 +62,7 @@ def download_by_pool(directory, urls=None):
     # 创建文件夹
     if not os.path.exists(directory):
         os.makedirs(directory)
-    pixiv_api = AppPixivAPI()
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     log.info('begin download image, url size: ' + str(len(urls)))
     pool = threadpool.ThreadPool(8)
@@ -132,7 +138,7 @@ def download_by_illustration_id(pixiv_api, directory: str, illustration_id: int,
 # 下载某个用户的图片，基于本地数据库
 def download_by_user_id(save_directory, user_id: int, min_total_bookmarks=5000):
     log.info('begin download illust by user_id: {}'.format(user_id))
-    pixiv_api = AppPixivAPI()
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     illustrations: [Illustration] = session.query(Illustration)\
         .filter(Illustration.user_id == user_id)\
@@ -150,7 +156,7 @@ def download_by_user_id(save_directory, user_id: int, min_total_bookmarks=5000):
 # 下载某个tag标签的图片，基于本地数据库
 def download_by_tag(save_directory, tag: str, min_total_bookmarks=5000):
     log.info('begin download illust by tag: {}'.format(tag))
-    pixiv_api = AppPixivAPI()
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     illustrations: [Illustration] = session.query(Illustration) \
         .filter(Illustration.id.in_(
@@ -176,7 +182,7 @@ def get_10_20(number: int):
 # 下载TOP收藏图片
 def download_top():
     directory = r"result/illusts-2020"
-    pixiv_api = AppPixivAPI()
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     top_illusts = query_top_total_bookmarks(count=50000)
     log.info("download illusts top size: {}".format(len(top_illusts)))
@@ -194,7 +200,7 @@ def download_from_url_files(url_file_path, save_directory):
     # 创建文件夹
     if not os.path.exists(save_directory):
         os.makedirs(save_directory)
-    pixiv_api = AppPixivAPI()
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     url_list = read_file_as_list(url_file_path)
     log.info('begin download image, url size: ' + str(len(url_list)))
