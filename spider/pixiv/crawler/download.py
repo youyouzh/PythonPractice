@@ -8,7 +8,7 @@ import threadpool
 
 import u_base.u_log as log
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, query_top_total_bookmarks
-from spider.pixiv.pixiv_api import AppPixivAPI
+from spider.pixiv.pixiv_api import AppPixivAPI, PixivError
 from spider.pixiv.arrange.file_util import read_file_as_list
 
 CONFIG = json.load(open(os.path.join(os.getcwd(), r'config\config.json')))
@@ -51,7 +51,7 @@ def download_task(pixiv_api, directory, url=None, illustration_image: Illustrati
         return
     try:
         pixiv_api.download(url, '', directory, replace=False, name=save_file_name)
-    except (OSError, NameError):
+    except (OSError, NameError, PixivError):
         log.error("save error, try again.")
         pixiv_api.download(url, '', directory, replace=False, name=save_file_name)
     log.info('download image end. cast: {}, url: {}'.format(time.time() - begin_time, url))
