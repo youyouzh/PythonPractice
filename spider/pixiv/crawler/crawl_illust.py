@@ -16,6 +16,12 @@ CONFIG = json.load(open(r'config\config.json', encoding='utf-8'))
 _USERNAME = CONFIG.get('username')
 _PASSWORD = CONFIG.get('password')
 _REFRESH_TOKEN = CONFIG.get('token')
+_REQUESTS_KWARGS = {
+    'proxies': {
+      'https': 'http://127.0.0.1:1080',
+    },
+    # 'verify': False,       # PAPI use https, an easy way is disable requests SSL verify
+}
 
 
 # 爬取用户收藏列表的图片
@@ -26,7 +32,7 @@ def crawl_user_bookmarks_illusts(user_id):
     next_url = True
     page_index = 1
     page_max_size = 20
-    pixiv_api = AppPixivAPI()
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.login(_USERNAME, _PASSWORD)
     while next_url and page_index < page_max_size:
         log.info('page index: {}'.format(page_index))
@@ -48,7 +54,7 @@ def crawl_user_illusts(user_id):
     next_url = '-'
     page_index = 1
     page_max_size = 20
-    pixiv_api = AppPixivAPI()
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     while next_url and page_index < page_max_size:
         log.info('page index: {}'.format(page_index))
@@ -69,7 +75,7 @@ def crawl_rank_illust_info():
     date_offset_info = json.load(open(date_offset_file, encoding='utf-8'))
     log.info('init date_offset_info success. {}'.format(date_offset_info))
 
-    pixiv_api = AppPixivAPI()
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     query_date = datetime.datetime.strptime(date_offset_info.get('date'), '%Y-%m-%d').date()
     now = datetime.date.today()

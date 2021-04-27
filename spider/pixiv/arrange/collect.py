@@ -2,11 +2,8 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-import time
-import re
 
 import numpy as np
-import PIL
 from PIL import Image
 
 import u_base.u_log as log
@@ -37,8 +34,13 @@ def update_illust_tag(directory: str, tag: str):
     """
     将某个文件夹下的所有文件在illust数据库中的记录标记score值
     :param directory: 目标文件夹
-    :param tag: 某个类型的标记名称
-    :param tag: 分数， 8：有用的教程，7：一级棒， 7：很棒， 5：还可以，4：有点色色，3：无感，2：不管了，1：什么鬼不要
+    :param tag: 某个类型的标记名称，
+               ignore: 校验过不需要的插画
+               downloaded： 已经下载的图片
+               small: 图片太小
+               delete: 直接删除
+               too_long: 太长啦，一帮是那种漫画
+               gray: 黑白插画
     :return:
     """
     if not os.path.exists(directory):
@@ -252,7 +254,7 @@ if __name__ == '__main__':
 
     # user_id = 935581
     # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id, use_cache=False)
-    target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore'
+    target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts-2020\ignore'
     # collect_illusts(r'ignore', is_small_size, 10)  # ゴスロリ  雪  バロック世界  ワンピース服  動物擬人化 雪風  セーラー服
     update_illust_tag(target_directory, 'ignore')
     # check_user_id(target_directory)
