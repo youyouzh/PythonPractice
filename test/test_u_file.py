@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*
 import os
+import re
+from urllib.parse import quote, unquote
 
 import u_base.u_file as u_file
 import u_base.u_log as u_log
@@ -42,14 +44,16 @@ def test_get_all_sub_files():
 
 # 批量修改图片后缀名，垃圾微信报错GIF图片有问题
 def test_modify_picture_suffix():
-    source_directory = r'D:\data\HDRI贴图资源\专业4K全景HDRI贴图合辑\HDR'
+    source_directory = r'D:\WeiXin'
     sub_file_paths = u_file.get_all_sub_files(source_directory)
+    min_gif_picture_size = 500 * 1024
     for sub_file_path in sub_file_paths:
         if os.path.isdir(sub_file_path):
             u_log.info('The file is directory: {}'.format(sub_file_path))
             continue
-        if os.path.getsize(sub_file_path) < 5e6:
-            u_log.info('The file size is small. file: {}, size: {}'.format(sub_file_path, os.path.getsize(sub_file_path)))
+        if os.path.getsize(sub_file_path) < min_gif_picture_size:
+            u_log.info(
+                'The file size is small. file: {}, size: {}'.format(sub_file_path, os.path.getsize(sub_file_path)))
             continue
         sub_file_name = os.path.split(sub_file_path)[1]
         sub_file_name_suffix = os.path.splitext(sub_file_name)[1]
@@ -99,3 +103,14 @@ def test_replace_file_name():
 
         u_log.info('rename file: {} --> file: {}'.format(sub_file_path, move_target_file_path))
         os.replace(sub_file_path, move_target_file_path)
+
+
+def test_replace_file_content():
+    file_path = r'D:\forme\Git_Projects\python-base\tool\industry-analysis-report.html'
+    file_content = u_file.read_content(file_path)
+    # text = '<a href="https://link.zhihu.com/?target=http%3A//index.iresearch.com.cn/pc" class=" wrap external">'
+    replace_content = re.sub(r'href="[^"]+"',
+                             lambda match: unquote(match.group(0).replace('https://link.zhihu.com/?target=', '')),
+                             file_content)
+    u_file.write_content(r'D:\forme\Git_Projects\python-base\tool\industry-analysis-'
+                         r'report-replace.html', replace_content)
