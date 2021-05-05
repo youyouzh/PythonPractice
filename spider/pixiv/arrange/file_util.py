@@ -68,6 +68,9 @@ def get_illust_id(illust_file_path: str) -> int:
     illust_id = illust_filename.split('_')[0]
     if illust_id.isdigit():
         return int(illust_id)
+    illust_id = illust_filename.split('-')[0]
+    if illust_id.isdigit():
+        return int(illust_id)
     log.warn('The illust_id is error. illust_file: {}'.format(illust_file_path))
     return -1
 
@@ -127,17 +130,22 @@ def get_all_image_paths(image_directory: str, use_cache: bool = True) -> list:
     if not os.path.isdir(image_directory):
         log.error('The image directory is not exist: {}'.format(image_directory))
         return []
+
+    # 构建cache文件夹并检查是否存在cache
     cache_file_path = r'cache\file-cache-' + re.sub(r"[\\/?*<>|\":]+", '-', image_directory) + '.txt'
     cache_file_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), cache_file_path)
     if use_cache and os.path.isfile(cache_file_path):
         # 存在缓存文件直接使用缓存
         log.info('read all image file from cache: {}'.format(cache_file_path))
         return read_file_as_list(cache_file_path)
+
     # 如果cache目录不存在，则创建
     if not os.path.isdir(os.path.split(cache_file_path)[0]):
         log.info('create the cache directory: {}'.format(cache_file_path))
         os.makedirs(os.path.split(cache_file_path)[0])
     all_files = u_file.get_all_sub_files(image_directory)
+
+    # 将结果存入cache
     cache_file_path_handler = open(cache_file_path, 'w+', encoding='utf-8')
     for file in all_files:
         cache_file_path_handler.writelines(file + '\n')
@@ -159,7 +167,7 @@ def get_illust_file_path(illust_id: int) -> str:
         if current_illust_id.isdigit() and int(current_illust_id) == illust_id:
             return illust_file_path
     log.error("The illust file is not exist. illust_id: {}".format(illust_id))
-    return None
+    return ''
 
 
 def collect_illust(collect_name, source_illust_file_path):
