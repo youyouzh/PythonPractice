@@ -15,8 +15,12 @@ conda离线初见虚拟环境：`conda create -n uusama --clone base`，默认�
 - 断网时创建： `conda create -n uusama --offline`
 - 复制创建： `conda create -n uusama --clone base`
 - 激活虚拟环境： `conda activate uusama`
+- 删除环境： `conda remove -n uusama --all`
 - 添加源： `conda config --add channels`
-- 移除源 `conda config --remove channels`
+- 移除源： `conda config --remove channels`
+- 删除没用的包： `conda clean -p`
+- 删除所有的安装包及cache： `conda clean -y --all`
+- 升级conda： `conda update conda`
 
 conda安装很慢时，更换源：
 
