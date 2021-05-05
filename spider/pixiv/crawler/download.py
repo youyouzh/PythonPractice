@@ -9,7 +9,7 @@ import threadpool
 import u_base.u_log as log
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, query_top_total_bookmarks
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivError
-from spider.pixiv.arrange.file_util import read_file_as_list
+from spider.pixiv.arrange.file_util import read_file_as_list, get_illust_id
 
 CONFIG = json.load(open(os.path.join(os.getcwd(), r'config\config.json')))
 _REFRESH_TOKEN = CONFIG.get('token')
@@ -73,17 +73,21 @@ def download_by_pool(directory, urls=None):
 
 
 # 通过pixiv_id下载图片，从本地数据查找URL，然后下载图片
-def download_by_illustration_id(pixiv_api, directory: str, illustration_id: int, **kwargs):
+def download_by_illustration_id(directory: str, illustration_id: int, **kwargs):
     default_kwargs = {
-        'spilt_bookmark': True,   # 是否根据收藏量来分割文件夹
+        'spilt_bookmark': False,   # 是否根据收藏量来分割文件夹
         'split_r_18': True,       # 是否把r-18的文件放在单独的文件夹
         'skip_download': True,    # 是否跳过标记为 downloaded 的插画
-        'skip_min_width': 0,      # 跳过下载的最小宽度，低于该值的插画不下载
-        'skip_min_height': 0,     # 跳过下载的最小长度，低于该值的插画不下载
-        'skip_max_page_count': 3,  # 超过多少张画则跳过
+        'skip_min_width': 800,      # 跳过下载的最小宽度，低于该值的插画不下载
+        'skip_min_height': 800,     # 跳过下载的最小长度，低于该值的插画不下载
+        'skip_max_page_count': 3,   # 超过多少张画则跳过
+        'skip_ignore': True,        # 已经标记为ignore的不下载
     }
     default_kwargs.update(kwargs)
     kwargs = default_kwargs
+
+    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
+    pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
 
     log.info('begin download illust by illustration_id: {}'.format(illustration_id))
     illustration: Illustration = session.query(Illustration).get(illustration_id)
@@ -107,6 +111,11 @@ def download_by_illustration_id(pixiv_api, directory: str, illustration_id: int,
         log.warn('The illustration(id: {}) image is small, width: {}/{}, height: {}/{}'
                  .format(illustration_id, illustration.width, kwargs.get('skip_min_width'),
                          illustration.height, kwargs.get('skip_min_height')))
+        return
+
+    # 已经标记为忽略的不下载
+    if kwargs.get('skip_ignore') and illustration.tag == 'ignore' or illustration.tag == 'small':
+        log.warn('The illustration(id: {}) is ignore.'.format(illustration_id))
         return
 
     # 按照收藏点赞人数分文件夹
@@ -136,10 +145,8 @@ def download_by_illustration_id(pixiv_api, directory: str, illustration_id: int,
 
 
 # 下载某个用户的图片，基于本地数据库
-def download_by_user_id(save_directory, user_id: int, min_total_bookmarks=5000):
+def download_by_user_id(save_directory, user_id: int, min_total_bookmarks=5000, **kwargs):
     log.info('begin download illust by user_id: {}'.format(user_id))
-    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
-    pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     illustrations: [Illustration] = session.query(Illustration)\
         .filter(Illustration.user_id == user_id)\
         .filter(Illustration.total_bookmarks >= min_total_bookmarks)\
@@ -147,17 +154,41 @@ def download_by_user_id(save_directory, user_id: int, min_total_bookmarks=5000):
     if illustrations is None or len(illustrations) <= 0:
         log.warn('The illustrations is empty. user_id: {}'.format(user_id))
         return
+
+    if not os.path.isdir(save_directory):
+        os.makedirs(save_directory)
+
+    # 检查当前文件夹，如果文件已经下载则跳过
+    download_illust_ids = []
+    illust_files = os.listdir(save_directory)
+    for illust_file in illust_files:
+        # 获取目录或者文件的路径
+        if os.path.isdir(os.path.join(save_directory, illust_file)):
+            continue
+
+        if os.path.getsize(os.path.join(save_directory, illust_file)) <= 100:
+            continue
+
+        # 提取 illust_id
+        illust_id = get_illust_id(illust_file)
+        if illust_id <= 0:
+            log.warn('The file illust_id is not exist. file: {}'.format(illust_file))
+            continue
+        download_illust_ids.append(illust_id)
+
     log.info('The illustrations size is: {}'.format(len(illustrations)))
     for illustration in illustrations:
-        download_by_illustration_id(pixiv_api, save_directory, illustration.id)
+        if illustration.id in download_illust_ids:
+            log.info('The illus was downloaded. illust_id: {}'.format(illustration.id))
+            continue
+
+        download_by_illustration_id(save_directory, illustration.id, **kwargs)
     log.info('end download illust by user_id: {}'.format(user_id))
 
 
 # 下载某个tag标签的图片，基于本地数据库
 def download_by_tag(save_directory, tag: str, min_total_bookmarks=5000):
     log.info('begin download illust by tag: {}'.format(tag))
-    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
-    pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     illustrations: [Illustration] = session.query(Illustration) \
         .filter(Illustration.id.in_(
             session.query(IllustrationTag.illust_id).filter(IllustrationTag.name == tag))) \
@@ -165,7 +196,7 @@ def download_by_tag(save_directory, tag: str, min_total_bookmarks=5000):
         .order_by(Illustration.total_bookmarks.desc()).all()
     log.info('The illustration of tag: {} count is: {}'.format(tag, len(illustrations)))
     for illustration in illustrations:
-        download_by_illustration_id(pixiv_api, save_directory, illustration.id)
+        download_by_illustration_id(save_directory, illustration.id)
     log.info('end download illust by tag: {}'.format(tag))
 
 
@@ -182,8 +213,6 @@ def get_10_20(number: int):
 # 下载TOP收藏图片
 def download_top():
     directory = r"result/illusts-2020"
-    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
-    pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
     top_illusts = query_top_total_bookmarks(count=50000)
     log.info("download illusts top size: {}".format(len(top_illusts)))
     for top_illust in top_illusts:
@@ -191,7 +220,8 @@ def download_top():
             log.info('skip illust: {}'.format(top_illust['id']))
             continue
         log.info("begin download illust: {}".format(top_illust))
-        download_by_illustration_id(pixiv_api, directory, top_illust["id"], skip_min_width=1000, skip_min_height=1000)
+        download_by_illustration_id(directory, top_illust["id"], spilt_bookmark=False,
+                                    skip_min_width=1000, skip_min_height=1000)
         log.info('end download illust: {}'.format(top_illust))
 
 
@@ -211,11 +241,28 @@ def download_from_url_files(url_file_path, save_directory):
         index += 1
 
 
+def download_task_by_illust_ids():
+    save_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts-2020'
+    illust_ids = [83955499, 78914920, 85204622, 86387545, 87833548, 86825654, 87844590]
+    log.info('begin download illust by ids. lens: {}'.format(illust_ids))
+    for illust_id in illust_ids:
+        download_by_illustration_id(save_directory, illust_id, skip_download=False, split_r_18=False)
+    log.info('end')
+
+
+def download_task_by_user_id(user_id=None, save_dir=None):
+    if user_id is None and save_dir is not None:
+        parse_user_id = get_illust_id(save_dir)
+        if parse_user_id >= 0:
+            user_id = parse_user_id
+    else:
+        save_dir = os.path.join(r'.\result\by-user', str(user_id))
+    download_by_user_id(save_dir, user_id, skip_download=False, skip_max_page_count=10, split_r_18=False)
+
+
 if __name__ == '__main__':
     # download_by_pool()
-    download_top()
+    # download_top()
     # tag = '四宮かぐや'
     # download_by_tag(os.path.join(r'.\result\by-tag', tag), tag)
-    # user_id = 792198  # 5323203
-    # save_file = os.path.join(r'.\result\by-user', str(user_id))
-    # download_by_user_id(save_file, user_id)
+    download_task_by_user_id(3302692)
