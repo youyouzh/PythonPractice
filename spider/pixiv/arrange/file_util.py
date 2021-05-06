@@ -9,6 +9,7 @@ import u_base.u_file as u_file
 
 
 __all__ = [
+    'get_cache_path',
     'get_base_path',
     'read_file_as_list',
     'get_all_image_file_path',
@@ -18,6 +19,10 @@ __all__ = [
     'get_directory_illusts',
     'get_all_image_paths'
 ]
+
+
+def get_cache_path(source_dir, tag='default', extension='txt'):
+    return r'cache\cache-' + tag + re.sub(r"[\\/?*<>|\":]+", '-', source_dir) + '.' + extension
 
 
 def get_base_path(path_name: str = None):
@@ -132,7 +137,7 @@ def get_all_image_paths(image_directory: str, use_cache: bool = True) -> list:
         return []
 
     # 构建cache文件夹并检查是否存在cache
-    cache_file_path = r'cache\file-cache-' + re.sub(r"[\\/?*<>|\":]+", '-', image_directory) + '.txt'
+    cache_file_path = get_cache_path(image_directory, 'image_paths', 'txt')
     cache_file_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), cache_file_path)
     if use_cache and os.path.isfile(cache_file_path):
         # 存在缓存文件直接使用缓存
