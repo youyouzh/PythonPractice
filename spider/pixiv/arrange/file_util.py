@@ -22,7 +22,37 @@ __all__ = [
 
 
 def get_cache_path(source_dir, tag='default', extension='txt'):
-    return r'cache\cache-' + tag + re.sub(r"[\\/?*<>|\":]+", '-', source_dir) + '.' + extension
+    base_dir = r'cache\cache-' + tag + re.sub(r"[\\/?*<>|\":]+", '-', source_dir) + '.' + extension
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), base_dir)
+
+
+def is_download_user(user_id: int) -> bool:
+    download_users = get_download_users()
+    for download_user in download_users:
+        if int(download_user.get('user_id')) == user_id:
+            return True
+    return False
+
+
+def get_download_users(use_cache=True) -> list:
+    directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result'
+    cache_path = get_cache_path(directory, 'download-users', extension='json')
+    if use_cache and os.path.isfile(cache_path):
+        return u_file.load_json_from_file(cache_path)
+
+    download_users = []
+    sub_file_paths = get_all_image_paths(directory, use_cache, contain_dir=True)
+    for sub_file_path in sub_file_paths:
+        dir_name = os.path.split(sub_file_path)[1]
+        user_id = dir_name.split('-')[0]
+        if os.path.isdir(sub_file_path) and user_id.isdigit():
+            download_users.append({
+                'user_id': user_id,
+                'comment': dir_name
+            })
+    log.info('download user ids size: {}'.format(download_users))
+    u_file.dump_json_to_file(cache_path, download_users)
+    return download_users
 
 
 def get_base_path(path_name: str = None):
@@ -124,11 +154,12 @@ def get_all_image_file_path(use_cache: bool = True) -> list:
     return list(illust_file_paths)
 
 
-def get_all_image_paths(image_directory: str, use_cache: bool = True) -> list:
+def get_all_image_paths(image_directory: str, use_cache: bool = True, contain_dir=False) -> list:
     """
-    递归获取某个文件夹下的所有图片
+    递归获取某个文件夹下的所有图片和文件夹
     :param image_directory: 图片路径
     :param use_cache: 是否使用缓存
+    :param contain_dir: 返回值是否包含目录
     :return: 图片绝对路径列表
     """
     log.info('begin get all image files from path: {}'.format(image_directory))
@@ -148,7 +179,7 @@ def get_all_image_paths(image_directory: str, use_cache: bool = True) -> list:
     if not os.path.isdir(os.path.split(cache_file_path)[0]):
         log.info('create the cache directory: {}'.format(cache_file_path))
         os.makedirs(os.path.split(cache_file_path)[0])
-    all_files = u_file.get_all_sub_files(image_directory)
+    all_files = u_file.get_all_sub_files(image_directory, contain_dir=contain_dir)
 
     # 将结果存入cache
     cache_file_path_handler = open(cache_file_path, 'w+', encoding='utf-8')
