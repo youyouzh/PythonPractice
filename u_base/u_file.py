@@ -226,11 +226,12 @@ def convert_image_format(image_path, delete=False):
         os.remove(image_path)
 
 
-def get_all_sub_files(root_path, all_files=None):
+def get_all_sub_files(root_path, all_files=None, contain_dir=False):
     """
     递归获取所有子文件列表
     :param root_path: 递归根目录
     :param all_files: 递归过程中的所有文件列表
+    :param contain_dir: 返回值是否包含目录
     :return:
     """
     if all_files is None:
@@ -249,7 +250,9 @@ def get_all_sub_files(root_path, all_files=None):
 
         if os.path.isdir(dir_or_file):
             # 如果是文件夹，则递归遍历
-            get_all_sub_files(dir_or_file, all_files)
+            if contain_dir:
+                all_files.append(dir_or_file)
+            get_all_sub_files(dir_or_file, all_files, contain_dir)
         else:
             # 否则将当前文件加入到 all_files
             all_files.append(os.path.abspath(dir_or_file))
@@ -273,7 +276,16 @@ def cache_json(json_data, cache_file=None) -> str:
     return cache_file
 
 
+def dump_json_to_file(json_file, json_data):
+    file_handle = open(json_file, 'w', encoding='utf-8')
+    json.dump(json_data, file_handle, ensure_ascii=False, indent=4)
+    file_handle.close()
+
+
 def load_json_from_file(json_file):
+    file_handle = open(json_file, encoding='utf-8')
+    json_data = None
     if os.path.isfile(json_file):
-        return json.load(open(json_file, encoding='utf-8'))
-    return None
+        json_data = json.load(file_handle)
+    file_handle.close()
+    return json_data
