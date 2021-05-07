@@ -7,8 +7,7 @@ import PIL
 import pandas as pd
 
 import u_base.u_log as log
-from spider.pixiv.arrange.collect import is_small_size
-from spider.pixiv.arrange.file_util import get_illust_id, get_all_image_paths
+from spider.pixiv.arrange.file_util import get_illust_id, get_all_image_paths, get_cache_path
 from spider.pixiv.mysql.db import session, Illustration
 
 pd.set_option('max_colwidth', 200)  # 设置打印数据宽度
@@ -19,74 +18,13 @@ def get_user_id_by_illust_id(illust_id: int) -> int:
     illust: Illustration = session.query(Illustration).get(illust_id)
     if not illust:
         log.warn('The illust is not exist. illust_id: {}'.format(illust_id))
-        return 0
+        return -1
     return illust.user_id
 
 
-# 检查和移动某个用户下的图片到目标文件夹
-def check_user_id(directory: str):
-    if not os.path.isdir(directory):
-        log.error('The directory is not exist. directory: {}'.format(directory))
-        return None
-    illust_files = os.listdir(directory)
-    illustrations = []
-    user_id_illust_count = {}
-    for illust_file in illust_files:
-        illust_file_path = os.path.join(directory, illust_file)
-        illust_id = get_illust_id(illust_file_path)
-        if illust_id <= 0:
-            log.warn('The illust id is not exist. illust file: {}'.format(illust_file_path))
-            continue
-        illustration: Illustration = session.query(Illustration).get(illust_id)
-        if illustration is None:
-            log.warn('The illustration is not exist. illust_id: {}'.format(illust_id))
-            continue
-        illustrations.append({
-            'id': illustration.id,
-            'user_id': illustration.user_id,
-            'path': illust_file_path
-        })
-        log.info('user_id: {}, current path: {}'.format(illustration.user_id, illust_file))
-        source_illust_file_path = os.path.abspath(illust_file_path)
-        move_target_file_path = os.path.join(os.path.dirname(source_illust_file_path), str(illustration.user_id))
-        if not os.path.isdir(move_target_file_path):
-            os.makedirs(move_target_file_path)
-        move_target_file_path = os.path.join(move_target_file_path, illust_file)
-        os.replace(source_illust_file_path, move_target_file_path)
-    log.info('check end. size: {}'.format(len(illustrations)))
-
-
-# 检查和移动小图片
-def move_small_file(target_directory: str):
-    move_directory = os.path.join(target_directory, 'small-3')
-    if not os.path.isdir(move_directory):
-        os.makedirs(move_directory)
-
-    # image_paths = get_all_image_paths(target_directory, False)
-    image_paths = get_all_image_paths(target_directory)
-    log.info('total image file size: {}'.format(len(image_paths)))
-    index = 0
-    for image_path in image_paths:
-        index += 1
-        log.info('process image path: {}'.format(image_path))
-        if os.path.isfile(image_path):
-            move_target_path = os.path.join(move_directory, os.path.split(image_path)[1])
-            if os.path.isfile(move_target_path):
-                log.warn('The file is exist. can not move: {}'.format(image_path))
-                # move_target_path = os.path.join(move_directory, 'index' + '--' + os.path.split(image_path)[1])
-                # continue
-            try:
-                if is_small_size(image_path):
-                    log.info('move file from: {} ---> to: {}'.format(image_path, move_target_path))
-                    os.replace(image_path, move_target_path)
-                    # os.remove(image_path)
-            except (PermissionError, PIL.UnidentifiedImageError, FileNotFoundError):
-                log.error('PermissionError, file: {}'.format(image_path))
-
-
 # 整理所有图片，提取所有图片基本信息
-def get_image_meta_infos(target_directory: str, cache_tag='default', use_cache=True):
-    cache_file_path = r'cache\image-meta-infos' + cache_tag + '.json'
+def get_image_meta_infos(target_directory: str, use_cache=True):
+    cache_file_path = get_cache_path(target_directory, 'meta-info', 'json')
     cache_file_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), cache_file_path)
     if use_cache and os.path.isfile(cache_file_path):
         return json.load(open(cache_file_path, 'r', encoding='utf-8'))
@@ -98,7 +36,7 @@ def get_image_meta_infos(target_directory: str, cache_tag='default', use_cache=T
     for image_path in image_paths:
         index += 1
         illust_id = get_illust_id(image_path)
-        log.info('get illust_id: {} ({}/{})'.format(illust_id, index, len(image_paths)))
+        # log.info('get illust_id: {} ({}/{})'.format(illust_id, index, len(image_paths)))
 
         if illust_id < 0:
             log.warn('The illust is not format. image_path: {}'.format(image_path))
@@ -117,6 +55,7 @@ def get_image_meta_infos(target_directory: str, cache_tag='default', use_cache=T
             'width': illustration.width,
             'height': illustration.height,
             'path': image_path,
+            'file_name': os.path.split(image_path)[1],
             'illust_id': illust_id,
             'user_id': illustration.user_id,
             'size': os.path.getsize(image_path),
@@ -127,6 +66,76 @@ def get_image_meta_infos(target_directory: str, cache_tag='default', use_cache=T
     log.info('get_image_meta_infos end. image size: {}'.format(len(image_meta_infos)))
     json.dump(image_meta_infos, open(cache_file_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     return image_meta_infos
+
+
+# 检查某个文件夹下的小图片，并把它们移动到该文件夹下的small文件夹下面
+def move_small_file(target_directory: str, min_width=800, min_height=800, min_size=10000,
+                    use_cache=True, move_directory=None):
+    # 如果未指定移动小文件的目标文件夹，则在当前文件夹下生存一个small的子文件夹
+    if move_directory is None:
+        move_directory = os.path.join(target_directory, 'small')
+        if not os.path.isdir(move_directory):
+            os.makedirs(move_directory)
+
+    image_meta_infos = get_image_meta_infos(target_directory, use_cache)
+    log.info('total image file size: {}'.format(len(image_meta_infos)))
+
+    for image_meta_info in image_meta_infos:
+        if not os.path.isfile(image_meta_info.get('path')):
+            log.warn('The file is deleted. path: {}'.format(image_meta_info.get('path')))
+            continue
+        move_target_path = os.path.join(move_directory, image_meta_info.get('file_name'))
+        if os.path.isfile(move_target_path):
+            log.warn('The move file is exist: {}'.format(move_target_path))
+
+        if image_meta_info.get('size') <= min_size:
+            log.info('The file is small. size: ({}/{})'.format(image_meta_info.get('size'), min_size))
+            log.info('begin move file from: {} to : {}'.format(image_meta_info.get('path'), move_target_path))
+            os.replace(image_meta_info.get('path'), move_target_path)
+
+        if image_meta_info.get('width') <= min_width and image_meta_info.get('height') <= min_height:
+            log.info('The file is small, width: ({}/{}), height: ({}/{})'
+                     .format(image_meta_info.get('width'), min_width, image_meta_info.get('height'), min_height))
+            log.info('begin move file from: {} to : {}'.format(image_meta_info.get('path'), move_target_path))
+            os.replace(image_meta_info.get('path'), move_target_path)
+    log.info('end move small file')
+
+
+def check_user_id(source_dir: str, user_dir: str, user_id=None, keep_source=True, use_cache=True):
+    """
+    检查和移动某个用户下的图片到目标文件夹
+    :param user_id: 指定用户id
+    :param source_dir: 需要处理的文件夹
+    :param user_dir: 某个用户专有的插画集文件夹，移动文件的目标文件夹
+    :param keep_source: 是否保留原来的文件，如果存在重复的时候生效
+    :param use_cache: 是否使用缓存中的文件目录
+    :return:
+    """
+    if not os.path.isdir(user_dir):
+        log.error('The user directory is not exist. directory: {}'.format(user_dir))
+        return None
+
+    parse_user_id = get_illust_id(user_dir)
+    if user_id is None and parse_user_id >= 0:
+        user_id = parse_user_id
+
+    image_meta_infos = get_image_meta_infos(source_dir, use_cache)
+    log.info('total image file size: {}'.format(len(image_meta_infos)))
+
+    for image_meta_info in image_meta_infos:
+        if image_meta_info.get('user_id') != user_id:
+            continue
+
+        log.info('The illust({}) is belong user_id({}).'.format(image_meta_info.get('illust_id'), user_id))
+        move_target_path = os.path.join(user_dir, image_meta_info.get('file_name'))
+        if os.path.isfile(move_target_path):
+            log.warn('The target user illust is exist: {}, keep: {}'.format(move_target_path, keep_source))
+            if keep_source:
+                continue
+
+        log.info('begin move file from: {} to : {}'.format(image_meta_info.get('path'), move_target_path))
+        os.replace(image_meta_info.get('path'), move_target_path)
+    log.info('end check user_id, dir: {}'.format(user_dir))
 
 
 def check_repeat():
@@ -144,109 +153,15 @@ def check_repeat():
             log.info('\n{}'.format(groups['path']))
 
 
-# 检查以前收集的插画，如果没有在新收集列表的话，标记出来，移动到特别的文件夹并做处理
-def check_old_file():
-    source_dir = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result'
-    check_dir = r'G:\漫画\pixiv'
-    move_dir = r'G:\漫画\pixiv\missing'
-
-    source_image_paths = get_all_image_paths(source_dir)
-    log.info('source dir image file size: {}'.format(len(source_image_paths)))
-    source_image_map = {}
-    for image_path in source_image_paths:
-        illust_id = get_illust_id(image_path)
-
-        if illust_id < 0:
-            log.warn('The illust is not format. image_path: {}'.format(image_path))
-            continue
-
-        if not os.path.isfile(image_path):
-            # log.warn('The illust was deleted. image_path: {}'.format(image_path))
-            continue
-
-        source_image_map[illust_id] = image_path
-
-    check_image_paths = get_all_image_paths(check_dir)
-    log.info('check dir image file size: {}'.format(len(source_image_paths)))
-    missing_illust_map = {}
-    for image_path in check_image_paths:
-        illust_id = get_illust_id(image_path)
-
-        if illust_id < 0:
-            log.warn('The illust is not format. image_path: {}'.format(image_path))
-            continue
-
-        if not os.path.isfile(image_path):
-            # log.warn('The illust was deleted. image_path: {}'.format(image_path))
-            continue
-
-        if illust_id not in source_image_map:
-            log.warn('The illus is missing. illust_id: {}, image_path: {}'.format(illust_id, image_path))
-            missing_illust_map[illust_id] = image_path
-            move_target_path: str = os.path.join(move_dir, os.path.split(image_path)[1])
-            # if os.path.isfile(move_target_path):
-            #     os.replace(move_target_path, image_path)
-            os.replace(image_path, move_target_path)
-
-
-def check_missing():
-    source_dir = r'G:\漫画\pixiv\missing'
-    move_dir = r'G:\漫画\pixiv\missing\ignore'
-    source_image_paths = get_all_image_paths(source_dir)
-    log.info('source dir image file size: {}'.format(len(source_image_paths)))
-    for image_path in source_image_paths:
-        illust_id = get_illust_id(image_path)
-
-        if illust_id < 0:
-            log.warn('The illust is not format. image_path: {}'.format(image_path))
-            continue
-
-        if not os.path.isfile(image_path):
-            log.warn('The illust was deleted. image_path: {}'.format(image_path))
-            continue
-
-        illustration: Illustration = session.query(Illustration).get(illust_id)
-        if illustration is None:
-            log.warn('The illustration is not exist. illust_id: {}'.format(illust_id))
-            continue
-        log.info('illust_id: {}, tag: {}, bookmarks: {}'.format(illust_id, illustration.tag,
-                                                                illustration.total_bookmarks))
-        # if illustration.tag == 'ignore' or illustration.tag == 'small':
-        #     move_target_path: str = os.path.join(move_dir, os.path.split(image_path)[1])
-        #     os.replace(image_path, move_target_path)
-
-
-def ignore_small():
-    source_dir = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\favorite'
-    move_dir = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore'
-    source_image_paths = get_all_image_paths(source_dir)
-    log.info('source dir image file size: {}'.format(len(source_image_paths)))
-    for image_path in source_image_paths:
-        illust_id = get_illust_id(image_path)
-
-        if illust_id < 0:
-            log.warn('The illust is not format. image_path: {}'.format(image_path))
-            continue
-
-        if not os.path.isfile(image_path):
-            log.warn('The illust was deleted. image_path: {}'.format(image_path))
-            continue
-
-        illustration: Illustration = session.query(Illustration).get(illust_id)
-        if illustration is None:
-            log.warn('The illustration is not exist. illust_id: {}'.format(illust_id))
-            continue
-
-        if illustration.width <= 800 and illustration.height <= 800:
-            log.info('The image file is small: {}'.format(image_path))
-            move_target_path: str = os.path.join(move_dir, os.path.split(image_path)[1])
-            os.replace(image_path, move_target_path)
-
-
 if __name__ == '__main__':
     # illust_id = 60881929
     # user_id = get_user_id_by_illust_id(illust_id)
 
     # user_id = 935581
     # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id, use_cache=False)
-    ignore_small()
+    # move_small_file(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\by-user\3302692',
+    #                 use_cache=False, min_width=1800, min_height=1800,
+    #                 move_directory=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\small')
+    check_user_id(source_dir=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts',
+                  user_dir=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\favorite\极致色彩\6662895-ATDAN-极致色彩-超配色背景',
+                  keep_source=False, use_cache=True)
