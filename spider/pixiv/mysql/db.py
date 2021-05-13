@@ -155,7 +155,7 @@ def update_user_tag(user_id, tag, replace=True):
 
 def is_download_user(user_id) -> bool:
     user: PixivUser = session.query(PixivUser).get(user_id)
-    return user is not None and user.tag == 'download'
+    return user is not None and user.tag != ''
 
 
 # 是否指定的illust_id，用来提取某一个用户或者某一批插画

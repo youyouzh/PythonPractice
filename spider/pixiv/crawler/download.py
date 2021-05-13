@@ -7,6 +7,7 @@ import time
 import threadpool
 
 import u_base.u_log as log
+import u_base.u_file as u_file
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, query_top_total_bookmarks, \
     is_download_user, update_user_tag
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivError
@@ -235,7 +236,7 @@ def download_from_url_files(url_file_path, save_directory):
         os.makedirs(save_directory)
     pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
     pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
-    url_list = read_file_as_list(url_file_path)
+    url_list = u_file.read_file_as_list(url_file_path)
     log.info('begin download image, url size: ' + str(len(url_list)))
     index = 0
     for url in url_list:
@@ -253,14 +254,14 @@ def download_task_by_illust_ids():
     log.info('end')
 
 
-def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None):
+def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None, check_download=True):
     # 通过插画id查询对应的用户id
     if illust_id is not None:
         illust: Illustration = session.query(Illustration).get(illust_id)
         if illust is not None:
             user_id = illust.user_id
 
-    if is_download_user(user_id):
+    if check_download and is_download_user(user_id):
         log.warn('The user hase been download. user_id: {}'.format(user_id))
         return
 
@@ -282,5 +283,5 @@ if __name__ == '__main__':
     # download_by_tag(os.path.join(r'.\result\by-tag', tag), tag)
     # download_task_by_user_id(save_dir=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\favorite\立绘-无场景\395595-cadillac-清爽-白色背景-少女')
     # download_task_by_user_id(user_id=3452804)
-    download_task_by_user_id(illust_id=61026511)
+    download_task_by_user_id(illust_id=87469781, check_download=False)
 
