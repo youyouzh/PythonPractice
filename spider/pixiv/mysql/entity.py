@@ -109,5 +109,6 @@ class PixivUser(BaseModel):
     pawoo_url = Column(String(255))
     is_premium = Column(TINYINT(1), nullable=False, server_default=text("'0'"))
     is_using_custom_profile_image = Column(TINYINT(1), server_default=text("'0'"))
+    tag = Column(String(64), nullable=False, server_default=text("''"))
     created_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_at = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))

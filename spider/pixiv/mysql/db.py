@@ -126,3 +126,30 @@ def query_top_total_bookmarks(count=100000) -> list:
     result = [dict(zip(v.keys(), v)) for v in results]
     json.dump(result, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     return result
+
+
+# 更新插图的标签
+def update_illustration_tag(illust_id, tag):
+    illustration: Illustration = session.query(Illustration).get(illust_id)
+    if illustration is None:
+        log.info('The illustration is not exist. illust_id: {}'.format(illust_id))
+        return
+    log.info('process illust_id: {}, set tag to: {} '.format(illust_id, tag))
+    illustration.tag = tag
+    session.commit()
+
+
+# 更新用户标签
+def update_user_tag(user_id, tag):
+    user: PixivUser = session.query(PixivUser).get(user_id)
+    if user is None:
+        log.info('The user is not exist. user_id: {}'.format(user_id))
+        return
+    log.info('process user_id: {}, set tag to: {} '.format(user_id, tag))
+    user.tag = tag
+    session.commit()
+
+
+def is_download_user(user_id) -> bool:
+    user: PixivUser = session.query(PixivUser).get(user_id)
+    return user is not None and user.tag == 'download'

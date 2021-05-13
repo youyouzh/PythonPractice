@@ -30,6 +30,7 @@ create table pixiv_user
 	pawoo_url varchar(255) null,
 	is_premium boolean default false not null,
 	is_using_custom_profile_image boolean default false null,
+    tag varchar(64)  default '' not null comment '手动标记的tag',
 	created_at timestamp default current_timestamp not null,
 	updated_at timestamp default current_timestamp not null,
 	UNIQUE KEY `account` (`account`)
