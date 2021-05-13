@@ -26,35 +26,6 @@ def get_cache_path(source_dir, tag='default', extension='txt'):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), base_dir)
 
 
-def is_download_user(user_id: int) -> bool:
-    download_users = get_download_users()
-    for download_user in download_users:
-        if int(download_user.get('user_id')) == user_id:
-            return True
-    return False
-
-
-def get_download_users(use_cache=True) -> list:
-    directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result'
-    cache_path = get_cache_path(directory, 'download-users', extension='json')
-    if use_cache and os.path.isfile(cache_path):
-        return u_file.load_json_from_file(cache_path)
-
-    download_users = []
-    sub_file_paths = get_all_image_paths(directory, use_cache, contain_dir=True)
-    for sub_file_path in sub_file_paths:
-        dir_name = os.path.split(sub_file_path)[1]
-        user_id = dir_name.split('-')[0]
-        if os.path.isdir(sub_file_path) and user_id.isdigit():
-            download_users.append({
-                'user_id': user_id,
-                'comment': dir_name
-            })
-    log.info('download user ids size: {}'.format(download_users))
-    u_file.dump_json_to_file(cache_path, download_users)
-    return download_users
-
-
 def get_base_path(path_name: str = None):
     """
     返回所有相对illust处理的基础路径，使用绝对路径，避免在不同地方调用时路径错误

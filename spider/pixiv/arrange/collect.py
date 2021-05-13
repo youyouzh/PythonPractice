@@ -9,7 +9,7 @@ from PIL import Image
 import u_base.u_log as log
 from spider.pixiv.arrange.file_util import collect_illust, get_all_image_file_path, get_illust_id, get_all_image_paths
 from spider.pixiv.arrange.image_util import extract_main_color
-from spider.pixiv.mysql.db import session, Illustration
+from spider.pixiv.mysql.db import session, Illustration, PixivUser, update_illustration_tag
 
 __all__ = [
     'update_illust_tag',
@@ -57,13 +57,7 @@ def update_illust_tag(directory: str, tag: str):
         if illust_id <= 0:
             log.warn('The file illust_id is not exist. file: {}'.format(illust_file))
             continue
-        illustration: Illustration = session.query(Illustration).get(illust_id)
-        if illustration is None:
-            log.info('The illustration is not exist. illust_id: {}'.format(illust_id))
-            continue
-        log.info('process illust_id: {}, set tag to: {} '.format(illust_id, tag))
-        illustration.tag = tag
-        session.commit()
+        update_illustration_tag(illust_id, tag)
         # os.remove(os.path.join(directory, illust_file))
     log.info('process end. total illust size: {}'.format(len(illust_files)))
 
@@ -254,7 +248,7 @@ if __name__ == '__main__':
 
     # user_id = 935581
     # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id, use_cache=False)
-    target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts-2020\ignore'
+    target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\by-user\10669991-Kätzchen-r-18-诱惑'
     # collect_illusts(r'ignore', is_small_size, 10)  # ゴスロリ  雪  バロック世界  ワンピース服  動物擬人化 雪風  セーラー服
     update_illust_tag(target_directory, 'ignore')
     # check_user_id(target_directory)

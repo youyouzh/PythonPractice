@@ -134,7 +134,7 @@ class BasePixivAPI(object):
         return token
 
     def download(self, url, prefix='', path=os.path.curdir, name=None, replace=False,
-                 referer='https://app-api.pixiv.net/'):
+                 referer='https://app-api.pixiv.net/', convert_webp=False):
         """Download image to file (use 6.0 app-api)"""
         if not name:
             name = prefix + os.path.basename(url)
@@ -142,16 +142,22 @@ class BasePixivAPI(object):
             name = prefix + name
 
         img_path = os.path.join(path, name)
-        if (not os.path.exists(img_path)) or replace:
-            # Write stream to file
-            response = self.requests_call('GET', url, headers={'Referer': referer}, stream=True)
-            with open(img_path, 'wb') as out_file:
-                # shutil.copyfileobj(response.raw, out_file)
-                out_file.write(response.content)
-            # 转换文件格式
+
+        # 如果文件已经存在，并且不替换，则直接返回
+        if os.path.exists(img_path) and not replace:
+            return
+
+        # Write stream to file
+        response = self.requests_call('GET', url, headers={'Referer': referer}, stream=True)
+        with open(img_path, 'wb') as out_file:
+            # shutil.copyfileobj(response.raw, out_file)
+            out_file.write(response.content)
+
+        if convert_webp:
+            # 转换WEBP文件格式
             image = Image.open(img_path)
             image_format = image.format
             # 如果是webp格式转为jpeg格式
             if image_format == 'WEBP':
                 image.save(img_path, 'JPEG')
-            del response
+        del response

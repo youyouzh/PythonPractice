@@ -1,7 +1,6 @@
 import os
 
 from spider.pixiv.arrange.file_util import *
-from spider.pixiv.arrange.file_util import get_download_users, is_download_user
 from u_base import u_unittest
 
 
@@ -24,12 +23,3 @@ def test_get_all_image_file_path():
     count = len(get_all_image_file_path())
     u_unittest.assert_lt(0, count)
 
-
-def test_get_download_user_ids():
-    user_ids = get_download_users()
-    u_unittest.assert_true(len(user_ids) > 0)
-
-
-def test_is_download_user():
-    u_unittest.assert_true(is_download_user(22124330))
-    u_unittest.assert_false(is_download_user(-1))

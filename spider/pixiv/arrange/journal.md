@@ -9,6 +9,12 @@
 - delete: 直接删除，很不好的图片
 - ignore： 忽略的比较差的图片
 
+## pixiv user标记的tag
+
+- ignore: 检查过，忽略掉
+- download: 已经下载过
+- favorite: 非常不错的
+
 ## 爬取的用户id列表
 
 - favorite\R-18\13379747-ひみつ-r-18-拘束-緊縛-捆绑
