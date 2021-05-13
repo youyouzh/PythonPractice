@@ -7,7 +7,8 @@ import time
 import threadpool
 
 import u_base.u_log as log
-from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, query_top_total_bookmarks
+from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, query_top_total_bookmarks, \
+    is_download_user, update_user_tag
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivError
 from spider.pixiv.arrange.file_util import read_file_as_list, get_illust_id
 
@@ -53,7 +54,8 @@ def download_task(pixiv_api, directory, url=None, illustration_image: Illustrati
         pixiv_api.download(url, '', directory, replace=False, name=save_file_name)
     except (OSError, NameError, PixivError):
         log.error("save error, try again.")
-        pixiv_api.download(url, '', directory, replace=False, name=save_file_name)
+        # 下载失败会生产一个1kb的文件，需要replace=True
+        pixiv_api.download(url, '', directory, replace=True, name=save_file_name)
     log.info('download image end. cast: {}, url: {}'.format(time.time() - begin_time, url))
 
 
@@ -183,6 +185,7 @@ def download_by_user_id(save_directory, user_id: int, min_total_bookmarks=5000, 
             continue
 
         download_by_illustration_id(save_directory, illustration.id, **kwargs)
+    update_user_tag(user_id, 'download')
     log.info('end download illust by user_id: {}'.format(user_id))
 
 
@@ -250,12 +253,24 @@ def download_task_by_illust_ids():
     log.info('end')
 
 
-def download_task_by_user_id(user_id=None, save_dir=None):
+def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None):
+    # 通过插画id查询对应的用户id
+    if illust_id is not None:
+        illust: Illustration = session.query(Illustration).get(illust_id)
+        if illust is not None:
+            user_id = illust.user_id
+
+    if is_download_user(user_id):
+        log.warn('The user hase been download. user_id: {}'.format(user_id))
+        return
+
+    # 如果给定了文件夹，一般是补充该用户的插画
     if user_id is None and save_dir is not None:
         parse_user_id = get_illust_id(save_dir)
         if parse_user_id >= 0:
             user_id = parse_user_id
     else:
+        # 新用户需要创建文件夹
         save_dir = os.path.join(r'.\result\by-user', str(user_id))
     download_by_user_id(save_dir, user_id, skip_download=False, skip_max_page_count=10, split_r_18=False)
 
@@ -265,4 +280,7 @@ if __name__ == '__main__':
     # download_top()
     # tag = '四宮かぐや'
     # download_by_tag(os.path.join(r'.\result\by-tag', tag), tag)
-    download_task_by_user_id(3302692)
+    # download_task_by_user_id(save_dir=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\favorite\立绘-无场景\395595-cadillac-清爽-白色背景-少女')
+    # download_task_by_user_id(user_id=3452804)
+    download_task_by_user_id(illust_id=60679729)
+
