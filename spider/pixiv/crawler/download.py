@@ -10,7 +10,7 @@ import u_base.u_log as log
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, query_top_total_bookmarks, \
     is_download_user, update_user_tag
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivError
-from spider.pixiv.arrange.file_util import read_file_as_list, get_illust_id
+from spider.pixiv.arrange.file_util import get_illust_id
 
 CONFIG = json.load(open(os.path.join(os.getcwd(), r'config\config.json')))
 _REFRESH_TOKEN = CONFIG.get('token')
@@ -282,5 +282,5 @@ if __name__ == '__main__':
     # download_by_tag(os.path.join(r'.\result\by-tag', tag), tag)
     # download_task_by_user_id(save_dir=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\favorite\立绘-无场景\395595-cadillac-清爽-白色背景-少女')
     # download_task_by_user_id(user_id=3452804)
-    download_task_by_user_id(illust_id=60679729)
+    download_task_by_user_id(illust_id=61026511)
 

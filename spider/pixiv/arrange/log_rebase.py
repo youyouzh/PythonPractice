@@ -3,13 +3,14 @@
 
 
 import os
-from spider.pixiv.arrange.file_util import read_file_as_list
 import u_base.u_log as log
+import u_base.u_file as u_file
 
 
+# 日志回滚
 if __name__ == '__main__':
     log_file_path = r'./log/move-file.log'
-    lines = read_file_as_list(log_file_path)
+    lines = u_file.read_file_as_list(log_file_path)
     log.info('The log file lines: {}'.format(len(lines)))
     for line in lines:
         line = line[80:]

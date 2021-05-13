@@ -8,7 +8,7 @@ from spider.pixiv.mysql.db import session, Illustration
 
 def test_update_illust_tag():
     file_path = r'..\crawler\result\collect\74184-check'
-    update_illust_tag(file_path, 'ignore')
+    update_dir_illust_tag(file_path, 'ignore')
 
 
 def test_collect_illusts():

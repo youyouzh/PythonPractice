@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 import u_base.u_log as log
-from spider.pixiv.arrange.file_util import get_illust_file_path, collect_illust, get_illust_id, get_directory_illusts
+from spider.pixiv.arrange.file_util import get_illust_id
 
 
 def show(images, themes):
@@ -37,13 +37,12 @@ def show(images, themes):
     plt.show()
 
 
-def show_by_illust_id(illust_id: int):
+def show_by_illust_id(illust_path: str):
     """
     显示指定插画
-    :param illust_id: 插画id
+    :param illust_path: 插画路径
     :return: None
     """
-    illust_path = get_illust_file_path(illust_id)
     illust_image = Image.open(illust_path)
     illust_pixel_matrix = np.array(illust_image)
     log.info("illust path: {}, pixel shape: {}".format(illust_path, illust_pixel_matrix.shape))
@@ -51,7 +50,7 @@ def show_by_illust_id(illust_id: int):
     plt.figure('Image')
     plt.imshow(illust_image)
     plt.axis('on')
-    plt.title('illust_id: %d, width: %d, height: %d' % (illust_id, illust_image.size[0], illust_image.size[1]))
+    plt.title('illust_path: %s, width: %d, height: %d' % (illust_path, illust_image.size[0], illust_image.size[1]))
     plt.show()
 
 
@@ -168,6 +167,34 @@ def train_main_colors(illust_directory):
     return illust_main_colors
 
 
+def get_directory_illusts(illust_directory) -> list:
+    """
+    获取某个文件夹下的所有插画，适用于pixiv插画
+    :param illust_directory: 插画路径
+    :return: 插画信息列表
+    """
+    illusts = []
+    if not os.path.isdir(illust_directory):
+        log.error('The illust directory is not exist: {}'.format(illust_directory))
+        return illusts
+    illust_files = os.listdir(illust_directory)
+    for illust_file in illust_files:
+        illust_file = os.path.join(illust_directory, illust_file)
+        if os.path.isdir(illust_file):
+            log.info('The file is directory: {}'.format(illust_file))
+            continue
+        illust_id = get_illust_id(illust_file)
+        if illust_id is None:
+            log.info('The file illust_id is None: {}'.format(illust_file))
+            continue
+        illusts.append({
+            'illust_id': illust_id,
+            'path': os.path.abspath(illust_file)
+        })
+    log.info('read all illusts success. size: {}'.format(len(illusts)))
+    return illusts
+
+
 def classify_main_color(illust_directory):
     log.info('begin classify main colors.')
     train_result_file = r'.\cache\main_color.txt'
@@ -194,7 +221,6 @@ def classify_main_color(illust_directory):
         if min(main_colors[0]['color']) > 220 and min(main_colors[1]['color']) > 200 and min(main_colors[2]['color']) > 200:
             # 主要颜色是白色
             log.info('white illust. collect: {}'.format(illust_id))
-            collect_illust(collect_directory, illust_file['path'])
 
 
 if __name__ == '__main__':

@@ -96,6 +96,27 @@ def read_content(file_path):
     return content
 
 
+def read_file_as_list(file_path: str) -> list:
+    """
+    按行读取文件，并返回list，每一个元素是每一行记录
+    :param file_path: 文件绝对地址
+    :return:
+    """
+    if not os.path.isfile(file_path):
+        log.warn('The file is not exist. {}'.format(file_path))
+        return []
+    file_handle = open(file_path, 'r', encoding='utf-8')
+    line = file_handle.readline()
+    contents = set()
+    while line:
+        line = line.strip('\n')
+        contents.add(line)
+        line = file_handle.readline()
+    file_handle.close()
+    log.info('read file end. list size: {}'.format(len(contents)))
+    return list(contents)
+
+
 def write_content(file_path, content) -> str:
     """
     write content to file, use UTF-8 encoding and overwrite

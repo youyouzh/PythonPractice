@@ -140,16 +140,40 @@ def update_illustration_tag(illust_id, tag):
 
 
 # 更新用户标签
-def update_user_tag(user_id, tag):
+def update_user_tag(user_id, tag, replace=True):
     user: PixivUser = session.query(PixivUser).get(user_id)
     if user is None:
         log.info('The user is not exist. user_id: {}'.format(user_id))
         return
-    log.info('process user_id: {}, set tag to: {} '.format(user_id, tag))
-    user.tag = tag
-    session.commit()
+    if replace:
+        log.info('process user_id: {}, set tag to: {} '.format(user_id, tag))
+        user.tag = tag
+        session.commit()
+    else:
+        log.info('the user({}) has tag({}) and do not change.'.format(user_id, user.tag))
 
 
 def is_download_user(user_id) -> bool:
     user: PixivUser = session.query(PixivUser).get(user_id)
     return user is not None and user.tag == 'download'
+
+
+# 是否指定的illust_id，用来提取某一个用户或者某一批插画
+def is_special_illust_ids(illust_path: str = None, **kwargs) -> bool:
+    if not kwargs.get('user_id') and not kwargs.get('illust_id'):
+        log.error('The user_id or illust_id is empty.')
+        return False
+    user_id = kwargs.get('user_id')
+    cache_illust_ids_path = os.path.dirname(__file__)
+    cache_illust_ids_path = os.path.join(cache_illust_ids_path, r'.\cache\\' + str(user_id) + '-illust-ids.json')
+    if not os.path.isfile(cache_illust_ids_path):
+        # 某个用户的illust_id
+        illust_ids = session.query(Illustration.id).filter(Illustration.user_id == user_id)\
+            .order_by(Illustration.total_bookmarks.desc()).all()
+        illust_ids = [x.id for x in illust_ids]
+        log.info('query user_id: {}, illust_ids_size: {}'.format(user_id, len(illust_ids)))
+        json.dump(illust_ids, open(cache_illust_ids_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    else:
+        illust_ids = json.load(open(cache_illust_ids_path, 'r', encoding='utf-8'))
+    current_illust_id = get_illust_id(illust_path)
+    return current_illust_id in illust_ids

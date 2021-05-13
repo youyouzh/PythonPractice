@@ -3,23 +3,12 @@
 import json
 import os
 
-import numpy as np
-from PIL import Image
-
 import u_base.u_log as log
-from spider.pixiv.arrange.file_util import collect_illust, get_all_image_file_path, get_illust_id, get_all_image_paths
-from spider.pixiv.arrange.image_util import extract_main_color
-from spider.pixiv.mysql.db import session, Illustration, PixivUser, update_illustration_tag
+from spider.pixiv.arrange.file_util import collect_illust, get_illust_id, get_all_image_paths
+from spider.pixiv.mysql.db import session, Illustration, update_illustration_tag, update_user_tag
 
 __all__ = [
-    'update_illust_tag',
-    'update_illust_tag_by_directory',
-    'is_special_tag',
-    'is_gray',
-    'is_small',
-    'is_too_long',
-    'is_special_illust_ids',
-    'is_small_size',
+    'update_dir_illust_tag',
     'extract_top',
     'collect_illusts'
 ]
@@ -30,9 +19,9 @@ cache_illust_ids = []
 
 
 # 更新本地整理好的插图
-def update_illust_tag(directory: str, tag: str):
+def update_dir_illust_tag(directory: str, tag: str):
     """
-    将某个文件夹下的所有文件在illust数据库中的记录标记score值
+    将某个文件夹下的所有文件在illust数据库中的记录标记tag
     :param directory: 目标文件夹
     :param tag: 某个类型的标记名称，
                ignore: 校验过不需要的插画
@@ -41,7 +30,7 @@ def update_illust_tag(directory: str, tag: str):
                delete: 直接删除
                too_long: 太长啦，一帮是那种漫画
                gray: 黑白插画
-    :return:
+    :return: None
     """
     if not os.path.exists(directory):
         log.error('The directory is not exist: {}'.format(directory))
@@ -62,123 +51,41 @@ def update_illust_tag(directory: str, tag: str):
     log.info('process end. total illust size: {}'.format(len(illust_files)))
 
 
-# 更新文件夹下的所有子文件
-def update_illust_tag_by_directory(parent_directory, tag):
+def update_sub_dir_illust_tag(parent_directory, tag):
+    """
+    将某个文件夹下的所有文件在illust数据库中的记录标记tag，支持两级文件夹
+    :param parent_directory: 父级文件夹
+    :param tag: 需要更新的标签
+    :return: None
+    """
     child_directories = os.listdir(parent_directory)
     for directory in child_directories:
         directory = os.path.join(parent_directory, directory)
         log.info('begin process directory: {}'.format(directory))
-        update_illust_tag(directory, tag)
+        update_dir_illust_tag(directory, tag)
 
 
-# 是否指定的tag
-def is_special_tag(illust_path: str) -> bool:
-    move_tags = ['wlop', 'wlop']
-    illust_filename = os.path.split(illust_path)[1]
-    tags = illust_filename.split('-')  # 从文件名分解得出包含的标签
-    for tag in tags:
-        for move_tag in move_tags:
-            if tag.find(move_tag) >= 0:
-                return True
-    return False
-
-
-# 是否黑白灰度图片
-def is_gray(illust_path: str) -> bool:
+def update_dir_user_tag(source_dir, tag, replace=True):
     """
-    1、纯彩色，只有白黑二色，白色RGB【R=G=B=255】，色黑【R=G=B=0】；
-    2、灰阶，RGB【R=G=B】；
-    色偏值 Diff = Max（|R-G|，|R-B|，|G-B|）；
-    彩色图片有所图片中最大的 Diff < 50；
-    :param illust_path: 图片地址
-    :return: True for gray picture
+    更新source_dir文件夹下的所有子文件夹中的user_id的标签
+    :param source_dir: 需要处理的文件夹
+    :param tag: 更新的标签，如download,favorite
+    :param replace: 是否替换原来的标签
+    :return: None
     """
-    if not os.path.isfile(illust_path):
-        log.error('The file is not exist: {}'.format(illust_path))
-        return False
-    # if int(os.path.split(illust_path)[1].split('_')[0]) != 64481817:
-    #     return False
-    threshold = 10  # 判断阈值，图片3个通道间差的方差均值小于阈值则判断为灰度图
-
-    try:
-        illust_image = Image.open(illust_path)
-    except (Image.UnidentifiedImageError, OSError) as e:
-        log.error("read file Error. illust_path: {}".format(illust_path))
-        return False
-    # 灰度图像
-    if len(illust_image.getbands()) <= 2:
-        return True
-
-    illust_image.thumbnail((200, 200))  # 缩放，整体颜色信息不变
-    channel_r = np.array(illust_image.getchannel('R'), dtype=np.int)
-    channel_g = np.array(illust_image.getchannel('G'), dtype=np.int)
-    channel_b = np.array(illust_image.getchannel('B'), dtype=np.int)
-    diff_sum = (channel_r - channel_g).var() + (channel_g - channel_b).var() + (channel_b - channel_r).var()
-    return diff_sum <= threshold
-
-
-# 是否特定颜色
-def is_main_color(illust_path: str, color: str) -> bool:
-    return extract_main_color(illust_path) == color
-
-
-# 是否图片太小
-def is_small(illust_path: str) -> bool:
-    min_image_size = 1e5  # 小于100k的文件
-    return os.path.getsize(illust_path) <= min_image_size
-
-
-# 是否图片长宽太小或者文件太小
-def is_small_size(illust_path: str, **kwargs) -> bool:
-    default_kwargs = {
-        'min_file_size': 5e5,
-        'min_image_width': 1500,
-        'min_image_height': 1500,
-    }
-    default_kwargs.update(kwargs)
-
-    illust_id = get_illust_id(illust_path)
-    illustration: Illustration = session.query(Illustration).get(illust_id)
-    return (illustration.width <= default_kwargs.get('min_image_width')
-            and illustration.height <= default_kwargs.get('min_image_height')) \
-        or illustration.height >= illustration.width * 3\
-        or os.path.getsize(illust_path) <= default_kwargs.get('min_file_size')
-
-
-# 判断是否特别的image，需要读取图像RGB信息
-def is_special_image(illust_path: str, **kwargs) -> bool:
-    file_handle = open(illust_path, 'rb')
-    image = Image.open(file_handle)
-    file_handle.close()  # 必须关闭文件句柄，否则无法移动文件
-    return False
-
-
-# 图片是否太长
-def is_too_long(illust_path: str) -> bool:
-    illust_image = Image.open(illust_path)
-    width, height = illust_image.size
-    return height >= width * 3
-
-
-# 是否指定的illust_id，用来提取某一个用户或者某一批插画
-def is_special_illust_ids(illust_path: str = None, **kwargs) -> bool:
-    if not kwargs.get('user_id') and not kwargs.get('illust_id'):
-        log.error('The user_id or illust_id is empty.')
-        return False
-    user_id = kwargs.get('user_id')
-    cache_illust_ids_path = os.path.dirname(__file__)
-    cache_illust_ids_path = os.path.join(cache_illust_ids_path, r'.\cache\\' + str(user_id) + '-illust-ids.json')
-    if not os.path.isfile(cache_illust_ids_path):
-        # 某个用户的illust_id
-        illust_ids = session.query(Illustration.id).filter(Illustration.user_id == user_id)\
-            .order_by(Illustration.total_bookmarks.desc()).all()
-        illust_ids = [x.id for x in illust_ids]
-        log.info('query user_id: {}, illust_ids_size: {}'.format(user_id, len(illust_ids)))
-        json.dump(illust_ids, open(cache_illust_ids_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    else:
-        illust_ids = json.load(open(cache_illust_ids_path, 'r', encoding='utf-8'))
-    current_illust_id = get_illust_id(illust_path)
-    return current_illust_id in illust_ids
+    if not os.path.exists(source_dir):
+        log.error('The directory is not exist: {}'.format(source_dir))
+        return
+    paths = os.listdir(source_dir)
+    for path in paths:
+        # 用户都是文件夹
+        if not os.path.isdir(os.path.join(source_dir, path)):
+            continue
+        user_id = get_illust_id(path)
+        if user_id <= 0:
+            log.warn('The file illust_id is not exist. file: {}'.format(path))
+            continue
+        update_user_tag(user_id, tag, replace=True)
 
 
 # 提取某个文件夹下面收藏TOP的图片
@@ -188,11 +95,14 @@ def extract_top(illust_path: str, count: int):
         return
     illust_files = os.listdir(illust_path)
     log.info('The illust size is: {}'.format(len(illust_files)))
+
+    # top子文件夹
     top_directory = os.path.join(illust_path, 'top')
     if not os.path.isdir(top_directory):
         log.info('create top directory: {}'.format(top_directory))
         os.makedirs(top_directory)
 
+    # 查询子文件夹下的所有插画信息
     illustrations: [Illustration] = []
     for illust_file in illust_files:
         if os.path.isdir(illust_file):
@@ -203,10 +113,14 @@ def extract_top(illust_path: str, count: int):
             log.error('The illust_id is is not exist: {}'.format(illust_file))
             continue
         illustrations.append(session.query(Illustration).get(illust_id))
+
+    # 按照收藏倒序排序，并取前面 count 个
     illustrations.sort(key=lambda x: x.total_bookmarks, reverse=True)
     illustrations = illustrations[:count]
     top_illust_ids = set(x.id for x in illustrations)
     log.info('The top illust ids is: {}'.format(top_illust_ids))
+
+    # 将top收藏的插画移动到top文件夹
     for illust_file in illust_files:
         if get_illust_id(illust_file) in top_illust_ids:
             log.info('ready move top file: {}'.format(illust_file))
@@ -220,6 +134,14 @@ def extract_top(illust_path: str, count: int):
 
 # 移动、统一、分类文件
 def collect_illusts(collect_tag='back', collect_function=None, max_collect_count=10, **kwargs):
+    """
+    将满足某个条件的插画全部移动到指定的收藏文件夹
+    :param collect_tag:
+    :param collect_function:
+    :param max_collect_count:
+    :param kwargs:
+    :return:
+    """
     log.info('begin collect illusts. tag: {}, max_collect_count: {}'.format(collect_tag, max_collect_count))
     default_kwargs = {
         'target_directory': r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts',
@@ -248,9 +170,11 @@ if __name__ == '__main__':
 
     # user_id = 935581
     # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id, use_cache=False)
-    target_directory = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\by-user\10669991-Kätzchen-r-18-诱惑'
+    base_dir = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result'
     # collect_illusts(r'ignore', is_small_size, 10)  # ゴスロリ  雪  バロック世界  ワンピース服  動物擬人化 雪風  セーラー服
-    update_illust_tag(target_directory, 'ignore')
+    # update_dir_illust_tag(os.path.join(base_dir, r'by-user\10669991-Kätzchen-r-18-诱惑'), 'ignore')
+    # update_dir_user_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\arrange\cache', 'download')
+    update_dir_user_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\arrange\cache', 'download')
     # check_user_id(target_directory)
     # extract_top(target_directory, 20)
 

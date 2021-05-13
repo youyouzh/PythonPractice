@@ -3,7 +3,6 @@
 import json
 import os
 
-import PIL
 import pandas as pd
 
 import u_base.u_log as log
@@ -13,17 +12,8 @@ from spider.pixiv.mysql.db import session, Illustration
 pd.set_option('max_colwidth', 200)  # 设置打印数据宽度
 
 
-# 获取某个图片的用户id
-def get_user_id_by_illust_id(illust_id: int) -> int:
-    illust: Illustration = session.query(Illustration).get(illust_id)
-    if not illust:
-        log.warn('The illust is not exist. illust_id: {}'.format(illust_id))
-        return -1
-    return illust.user_id
-
-
 # 整理所有图片，提取所有图片基本信息
-def get_image_meta_infos(target_directory: str, use_cache=True):
+def get_image_meta_infos(target_directory: str, use_cache=True) -> list:
     cache_file_path = get_cache_path(target_directory, 'meta-info', 'json')
     cache_file_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), cache_file_path)
     if use_cache and os.path.isfile(cache_file_path):
@@ -101,7 +91,7 @@ def move_small_file(target_directory: str, min_width=800, min_height=800, min_si
     log.info('end move small file')
 
 
-def check_user_id(source_dir: str, user_dir: str, user_id=None, keep_source=True, use_cache=True):
+def check_user_id(source_dir: str, user_dir: str, user_id=None, keep_source=True, use_cache=True, replace_user_file=False):
     """
     检查和移动某个用户下的图片到目标文件夹
     :param user_id: 指定用户id
@@ -109,6 +99,7 @@ def check_user_id(source_dir: str, user_dir: str, user_id=None, keep_source=True
     :param user_dir: 某个用户专有的插画集文件夹，移动文件的目标文件夹
     :param keep_source: 是否保留原来的文件，如果存在重复的时候生效
     :param use_cache: 是否使用缓存中的文件目录
+    :param replace_user_file: 是否替换掉用户文件夹中的文件
     :return:
     """
     if not os.path.isdir(user_dir):
@@ -122,8 +113,17 @@ def check_user_id(source_dir: str, user_dir: str, user_id=None, keep_source=True
     image_meta_infos = get_image_meta_infos(source_dir, use_cache)
     log.info('total image file size: {}'.format(len(image_meta_infos)))
 
+    index = 0
+    move_file_size = 0
     for image_meta_info in image_meta_infos:
+        index += 1
+        # if index % 1000 == 0:
+        #     log.info('processed file size: {}'.format(index))
         if image_meta_info.get('user_id') != user_id:
+            continue
+
+        if not os.path.isfile(image_meta_info.get('path')):
+            log.info('The file was delete. path: {}'.format(image_meta_info.get('path')))
             continue
 
         log.info('The illust({}) is belong user_id({}).'.format(image_meta_info.get('illust_id'), user_id))
@@ -133,9 +133,11 @@ def check_user_id(source_dir: str, user_dir: str, user_id=None, keep_source=True
             if keep_source:
                 continue
 
-        log.info('begin move file from: {} to : {}'.format(image_meta_info.get('path'), move_target_path))
-        os.replace(image_meta_info.get('path'), move_target_path)
-    log.info('end check user_id, dir: {}'.format(user_dir))
+        move_file_size += 1
+        if replace_user_file:
+            log.info('begin move file from: {} to : {}'.format(image_meta_info.get('path'), move_target_path))
+            os.replace(image_meta_info.get('path'), move_target_path)
+    log.info('end check user_id, hit file size: {}, dir: {}'.format(move_file_size, user_dir))
 
 
 def check_repeat():
@@ -162,6 +164,9 @@ if __name__ == '__main__':
     # move_small_file(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\by-user\3302692',
     #                 use_cache=False, min_width=1800, min_height=1800,
     #                 move_directory=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\small')
-    check_user_id(source_dir=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts',
-                  user_dir=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\favorite\极致色彩\6662895-ATDAN-极致色彩-超配色背景',
-                  keep_source=False, use_cache=True)
+    base_dir = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result'
+    check_user_paths = os.listdir(os.path.join(base_dir, r'collect-user'))
+    for check_user_path in check_user_paths:
+        check_user_id(source_dir=os.path.join(base_dir, r'collect-favorite'),
+                      user_dir=os.path.join(base_dir, os.path.join('collect-user', check_user_path)),
+                      keep_source=False, use_cache=True, replace_user_file=False)

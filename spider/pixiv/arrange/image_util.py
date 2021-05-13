@@ -76,6 +76,60 @@ BLACK_WHITE_HSV_RANGE = {
 }
 
 
+# 是否黑白灰度图片
+def is_gray(illust_path: str) -> bool:
+    """
+    1、纯彩色，只有白黑二色，白色RGB【R=G=B=255】，色黑【R=G=B=0】；
+    2、灰阶，RGB【R=G=B】；
+    色偏值 Diff = Max（|R-G|，|R-B|，|G-B|）；
+    彩色图片有所图片中最大的 Diff < 50；
+    :param illust_path: 图片地址
+    :return: True for gray picture
+    """
+    if not os.path.isfile(illust_path):
+        log.error('The file is not exist: {}'.format(illust_path))
+        return False
+    # if int(os.path.split(illust_path)[1].split('_')[0]) != 64481817:
+    #     return False
+    threshold = 10  # 判断阈值，图片3个通道间差的方差均值小于阈值则判断为灰度图
+
+    try:
+        illust_image = Image.open(illust_path)
+    except (Image.UnidentifiedImageError, OSError) as e:
+        log.error("read file Error. illust_path: {}".format(illust_path))
+        return False
+    # 灰度图像
+    if len(illust_image.getbands()) <= 2:
+        return True
+
+    illust_image.thumbnail((200, 200))  # 缩放，整体颜色信息不变
+    channel_r = np.array(illust_image.getchannel('R'), dtype=np.int)
+    channel_g = np.array(illust_image.getchannel('G'), dtype=np.int)
+    channel_b = np.array(illust_image.getchannel('B'), dtype=np.int)
+    diff_sum = (channel_r - channel_g).var() + (channel_g - channel_b).var() + (channel_b - channel_r).var()
+    return diff_sum <= threshold
+
+
+# 是否特定颜色
+def is_main_color(illust_path: str, color: str) -> bool:
+    return extract_main_color(illust_path) == color
+
+
+# 判断是否特别的image，需要读取图像RGB信息
+def is_special_image(illust_path: str, **kwargs) -> bool:
+    file_handle = open(illust_path, 'rb')
+    image = Image.open(file_handle)
+    file_handle.close()  # 必须关闭文件句柄，否则无法移动文件
+    return False
+
+
+# 图片是否太长
+def is_too_long(illust_path: str) -> bool:
+    illust_image = Image.open(illust_path)
+    width, height = illust_image.size
+    return height >= width * 3
+
+
 def show_color_space_3d(image_path, hsv: bool = False):
     """
     在3D界面展示图片像素颜色空间分布
@@ -242,6 +296,6 @@ def cv_to_pil_image(image, show=False):
 
 
 if __name__ == '__main__':
-    image_path = r'H:\Pictures\动漫插画\ssim\Wallpapers_111.png'
+    path = r'H:\Pictures\动漫插画\ssim\Wallpapers_111.png'
     # show_color_space_3d(image_path, True)
-    show_hist(image_path)
+    show_hist(path)
