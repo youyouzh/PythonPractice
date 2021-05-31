@@ -35,7 +35,7 @@ COMMON_HEADERS = {
 }
 
 
-def get_content(path):
+def get_content(path, **kwargs):
     """
     read content from file or url
     :param path: file or url
@@ -54,10 +54,12 @@ def get_content(path):
         # herders = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; rv:2.0.1) Gecko/20100101 Firefox/4.0.1'}
         log.info('begin get info from web url: ' + path)
         # time.sleep(0.5)
-        response = requests.get(path, timeout=60)
+        response = requests.get(path, timeout=60, headers=COMMON_HEADERS, **kwargs)
         log.info('end get info from web url: ' + path)
         if not (400 <= response.status_code < 500):
             response.raise_for_status()
+        if response.text is None or response.text == '':
+            log.error('The response text is empty.')
         return response.text
     except Exception as e:
         log.info('get content fail. {}'.format(e))
