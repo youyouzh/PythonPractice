@@ -1,7 +1,9 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 
-import requests, re, json
+import json
+import re
+import requests
 from bs4 import BeautifulSoup
 
 # global config
