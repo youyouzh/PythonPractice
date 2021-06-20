@@ -35,10 +35,11 @@ COMMON_HEADERS = {
 }
 
 
-def get_content(path, **kwargs):
+def get_content(path, encoding=None, **kwargs):
     """
     read content from file or url
     :param path: file or url
+    :param encoding: 返回值编码
     :return: file or url content
     """
     if not path:
@@ -55,6 +56,8 @@ def get_content(path, **kwargs):
         log.info('begin get info from web url: ' + path)
         # time.sleep(0.5)
         response = requests.get(path, timeout=60, headers=COMMON_HEADERS, **kwargs)
+        if encoding is not None:
+            response.encoding = encoding
         log.info('end get info from web url: ' + path)
         if not (400 <= response.status_code < 500):
             response.raise_for_status()
@@ -175,27 +178,27 @@ def get_file_name_from_url(url):
     return urllib.parse.unquote(file_name)
 
 
-def download_file(url, file_name, path=os.path.curdir, replace=False, **kwargs):
+def download_file(url, filename, path=os.path.curdir, replace=False, **kwargs):
     """
     download file from url
     :param url: image_url
     :param path: save directory path
-    :param file_name: image name
+    :param filename: image name
     :param replace: replace the same name file.
     :return:
     """
-    if not file_name:
-        file_name = os.path.basename(url)
-    elif os.path.splitext(file_name)[-1].find('.') < 0:
+    if not filename:
+        filename = os.path.basename(url)
+    elif os.path.splitext(filename)[-1].find('.') < 0:
         # 所给文件名不带后缀的话，添加上后缀
-        file_name += os.path.splitext(url)[-1]
+        filename += os.path.splitext(url)[-1]
 
     # 指定文件夹不存在则创建
     if not os.path.isdir(path):
         os.makedirs(path)
 
-    file_name = file_name[:200]  # windows文件名称不能超过255个字符
-    file_path = os.path.join(path, file_name)
+    filename = filename[:200]  # windows文件名称不能超过255个字符
+    file_path = os.path.join(path, filename)
 
     # 如果文件已经下载并且不替换，则直接结束
     if os.path.exists(file_path) and not replace:
@@ -203,7 +206,7 @@ def download_file(url, file_name, path=os.path.curdir, replace=False, **kwargs):
         return True
 
     # Write stream to file
-    log.info('begin download file from url: {}'.format(url))
+    log.info('begin download file from url: {}, save filename: {}'.format(url, filename))
     try:
         response = requests.get(url, stream=True, headers=COMMON_HEADERS, **kwargs)
         with open(file_path, 'wb') as out_file:
