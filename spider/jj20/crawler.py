@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import json
 import os
-import re
-import time
-import threadpool
+import shutil
 from bs4 import BeautifulSoup
 
 import u_base.u_log as log
@@ -30,7 +27,7 @@ def get_image_list(url: str) -> list:
     return image_collects
 
 
-def download_image_collect(image_collect: dict):
+def download_image_collect(image_collect: dict, save_dir=r'result'):
     html_content = u_file.get_content(image_collect['url'], encoding='gb2312')
     soup = BeautifulSoup(html_content, 'lxml')
 
@@ -45,17 +42,56 @@ def download_image_collect(image_collect: dict):
         current_image_url = image_collection_img_element['src']
         current_image_url = current_image_url.replace('-lp', '')
         filename = image_collect['title'] + '-' + u_file.get_file_name_from_url(current_image_url)
-        u_file.download_file(current_image_url, filename, r'result')
+        u_file.download_file(current_image_url, filename, save_dir)
 
 
-if __name__ == '__main__':
-    base_url = 'http://www.jj20.com/bz/nxxz/list_7_cc_13_{}.html'
-    total_page_count = 133
+def crawl_all_picture():
+    base_url = 'http://www.jj20.com/bz/nxxz/list_7_cc_12_1.html'
+    save_dir = r'result-high'
+
+    base_url = base_url.replace('_1.html', '_{}.html')
+    begin_index = 0
+    total_page_count = 6
     for index in range(total_page_count):
-        if index <= 78:
+        if index <= begin_index:
             continue
         log.info('begin extract image collect. ({}/{})'.format(index, total_page_count))
         image_collect_infos = get_image_list(base_url.format(index))
         log.info('image collect size: '.format(len(image_collect_infos)))
         for image_collect_info in image_collect_infos:
-            download_image_collect(image_collect_info)
+            download_image_collect(image_collect_info, save_dir)
+
+
+# 将第一涨图片挑选出来，方便批量处理
+def copy_first_picture():
+    picture_paths = u_file.get_all_sub_files(r'result')
+    first_picture_paths = []
+    for picture_path in picture_paths:
+        if picture_path.find('-1.jpg') >= 0:
+            first_picture_paths.append(picture_path)
+
+    log.info('first picture size: {}'.format(len(first_picture_paths)))
+    for first_picture_path in first_picture_paths:
+        copy_file_path = os.path.join(r'result-copy', os.path.split(first_picture_path)[1])
+        log.info('copy file: {}'.format(copy_file_path))
+        if os.path.isfile(copy_file_path):
+            log.info('The file is exist: {}'.format(copy_file_path))
+            continue
+        shutil.copy(first_picture_path, copy_file_path)
+
+
+def delete_file():
+    delete_picture_paths = u_file.get_all_sub_files(r'result-delete')
+    for delete_picture_path in delete_picture_paths:
+        base_filename = os.path.split(delete_picture_path)[1]
+        for index in range(30):
+            source_filename = base_filename.replace('-1', '-' + str(index))
+            source_path = os.path.join(r'result', source_filename)
+            if not os.path.isfile(source_path):
+                break
+            log.info('move file: {}'.format(source_path))
+            # os.replace(source_path, os.path.join(r'result-other', source_filename))
+
+
+if __name__ == '__main__':
+    crawl_all_picture()
