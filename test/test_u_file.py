@@ -114,3 +114,34 @@ def test_replace_file_content():
                              file_content)
     u_file.write_content(r'D:\forme\Git_Projects\python-base\tool\industry-analysis-'
                          r'report-replace.html', replace_content)
+
+
+def test_generate_gitbook_summary():
+    path = r'D:\forme\Git_Projects\knowledge-system'
+    sub_file_paths = u_file.get_all_sub_files(path, contain_dir=True)
+    summary_content = ''
+    sub_file_paths.sort()
+    exclude_paths = ['.git', '.idea', 'assets', 'temp', 'node_modules', '_book']
+    for sub_file_path in sub_file_paths:
+        relative_path = sub_file_path.replace(path + '\\', '')
+        # 过滤掉非markdown文件
+        ignore = False
+        for exclude_path in exclude_paths:
+            if sub_file_path.find(exclude_path) >= 0:
+                ignore = True
+        if ignore:
+            continue
+
+        path_depth = relative_path.count('\\')
+        menu = '  ' * path_depth
+
+        if os.path.isfile(sub_file_path):
+            if sub_file_path.find('.md') >= 0:
+                menu += '- [{}]({})'.format(os.path.split(relative_path)[1].replace('.md', ''), relative_path)
+            else:
+                continue
+        else:
+            menu += '- {}'.format(relative_path.split('\\')[-1])
+        summary_content += menu + "\n"
+    u_file.write_content(r'cache\result.md', summary_content)
+    print(summary_content)
