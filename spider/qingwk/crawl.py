@@ -183,7 +183,7 @@ def get_question_detail(question_detail_url: str) -> dict:
     question_detail = json_data['coach']['subject']
     # 'subjectQuestionPage',
     keep_fields = ['id', 'title', 'summary', 'tip', 'name', 'keywords', 'previousId', 'nextId',
-                   'courseId', 'questionCount', 'description', 'content']
+                   'courseId', 'questionCount', 'description', 'content', 'files']
     question_info = extract_dict_field(question_detail, keep_fields)
     return question_info
 
