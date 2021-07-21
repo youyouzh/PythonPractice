@@ -74,7 +74,7 @@ def scan_main_page(url):
         author_node = meta_node.find('span', {'class': 'author'})
         articles.append({
             'id': article_id,
-            'title' : a_node.string,
+            'title': a_node.string,
             'url': a_node['href'],
             'author': author_node.a.string,
             'date': data_node.string,
