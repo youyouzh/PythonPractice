@@ -6,6 +6,7 @@
 import os
 import time
 import json
+import re
 import urllib.parse
 import requests
 import threadpool
@@ -15,6 +16,7 @@ import u_base.u_log as log
 
 __all__ = [
     'get_content',
+    'convert_windows_path',
     'get_json',
     'read_content',
     'write_content',
@@ -33,6 +35,10 @@ COMMON_HEADERS = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
                   'Chrome/88.0.4324.146 Safari/537.36'
 }
+
+
+def convert_windows_path(path):
+    return re.sub(r"[\\/?*<>|\":]+", '-', path)
 
 
 def get_content(path, encoding=None, **kwargs):
