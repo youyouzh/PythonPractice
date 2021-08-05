@@ -1,19 +1,29 @@
 import re
 from typing import List
 
-import requests
 import shutil
 import os
 import json
+
 import u_base.u_file as u_file
 import u_base.u_log as log
 from urllib.parse import urlparse, urljoin
+from concurrent.futures import ThreadPoolExecutor
 
 _REQUESTS_KWARGS = {
     'proxies': {
       'https': 'http://127.0.0.1:1080',
     },
 }
+
+
+def get_ts_ave_dir(m3u8_url: str):
+    parse_url = urlparse(urljoin(m3u8_url, ''))
+    url_path = os.path.dirname(parse_url.path)
+    save_dir = os.path.join(r'result', u_file.convert_windows_path(url_path))
+    if not os.path.isdir(save_dir):
+        os.mkdir(save_dir)
+    return save_dir
 
 
 def extract_m3u8_url(html_content: str) -> str or None:
@@ -59,44 +69,55 @@ def extract_ts_urls(m3u8_url: str) -> List[str]:
     return ts_urls
 
 
-def download_ts_file(ts_urls: List[str]):
-    if len(ts_urls) == 0:
-        log.warn('The ts urls is empty.')
-        return
-    parse_url = urlparse(ts_urls[0])
-    save_dir = os.path.join(r'result', u_file.convert_windows_path(parse_url.path).split('.')[0])
-    if not os.path.isdir(save_dir):
-        os.mkdir(save_dir)
+def download_ts_file(m3u8_url: str, ts_urls: List[str]):
+    save_dir = get_ts_ave_dir(m3u8_url)
     index = 1
     for ts_url in ts_urls:
         file_name = u_file.get_file_name_from_url(ts_url)
         u_file.download_file(ts_url, file_name, save_dir, **_REQUESTS_KWARGS)
         log.info('download ts file success({}/{}): {}'.format(index, len(ts_urls), ts_url))
+        index += 1
 
 
-def merge_ts_file(m3u8_url: str, merge_filename: str):
-    parse_url = urlparse(m3u8_url)
-    ts_dir = os.path.join(r'result', u_file.convert_windows_path(parse_url.path).split('.')[0])
-    if os.path.isdir(ts_dir):
-        log.error('The ts dir is not exist: {}'.format(ts_dir))
-        return
+def download_ts_file_with_pool(m3u8_url: str, ts_urls: List[str]):
+    pool = ThreadPoolExecutor(10)
+    save_dir = get_ts_ave_dir(m3u8_url)
+    task_futures = []
+    for ts_url in ts_urls:
+        file_name = u_file.get_file_name_from_url(ts_url)
+        future = pool.submit(u_file.download_file, ts_url, file_name, save_dir, **_REQUESTS_KWARGS)
+        task_futures.append(future)
 
-    merge_file_path = os.path.join(r'result', merge_filename)
+    for future in task_futures:
+        if future.done():
+            log.info('tak done')
+
+
+def merge_ts_file(m3u8_url: str, video_name: str):
+    merge_file_path = os.path.join(r'result', video_name)
     merge_file_handle = open(merge_file_path, 'wb')
-    for ts_file in os.listdir(ts_dir):
-        if not ts_file.rstrip().endswith('.ts'):
+
+    ts_dir = get_ts_ave_dir(m3u8_url)
+    for ts_filename in os.listdir(ts_dir):
+        if not ts_filename.rstrip().endswith('.ts'):
             continue
-        ts_file_handle = open(ts_file, 'rb')
+        ts_filepath = os.path.join(ts_dir, ts_filename)
+        ts_file_handle = open(ts_filepath, 'rb')
         shutil.copyfileobj(ts_file_handle, merge_file_handle)
         ts_file_handle.close()
     merge_file_handle.close()
     log.info('merge file success: {}'.format(merge_file_path))
 
 
-if __name__ == '__main__':
-    url = 'http://51ck.cc/vodplay/10043-1-1.html'
-    response = u_file.get_content(url)
-    video_url = extract_m3u8_url(response)
+def download_video(page_url: str):
+    response = u_file.get_content(page_url)
+    m3u8_url = extract_m3u8_url(response)
     title = extract_title(response)
-    chunk_urls = extract_ts_urls(video_url)
-    download_ts_file(chunk_urls, title + '.mp4')
+    ts_urls = extract_ts_urls(m3u8_url)
+    download_ts_file_with_pool(m3u8_url, ts_urls)
+    merge_ts_file(m3u8_url, title + '.mp4')
+
+
+if __name__ == '__main__':
+    url = 'http://51ck.cc/vodplay/9704-1-1.html'
+    download_video(url)
