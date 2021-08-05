@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 
 import u_base.u_file as u_file
 import u_base.u_log as log
+from Crypto.Cipher import AES  # pip install pycryptodome
 from urllib.parse import urlparse, urljoin
 from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 
@@ -145,7 +146,45 @@ def download_video(page_url: str):
     download_ts_file_with_pool(m3u8_url, ts_urls)
     merge_ts_file(m3u8_url, title + '.mp4')
 
+def get_asc_key(key):
+    '''
+    获取密钥，把16进制字节码转换成ascii码
+    :param key:从网页源代码中获取的16进制字节码
+    :return: ascii码格式的key
+    '''
+    # 最简洁的写法
+    # asc_key = [chr(int(i,16)) for i in key.split(',')]
+    # 通俗易懂的写法
+    key = key.split(',')
+    asc_key = ''
+    for i in key:
+        i = int(i, 16)  # 16进制转换成10进制
+        i = chr(i)  # 10进制转换成ascii码
+        asc_key += i
+    return asc_key
+
+
+def decrypt_aes_128():
+    iv = b'0000000000000000'
+    key = '21464093fdd9cef9'
+    decrypt_file_handler = open(r'result\yu-3-aes-128-key-21464093fdd9cef9.mp4', 'rb')
+    output_file_handler = open(r'result\yu-3.mp4', 'wb')
+    part = decrypt_file_handler.read()
+    cipher = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv)
+    plain_data = cipher.decrypt(part)
+    if part:
+        output_file_handler.write(plain_data)
+
+
+def download_by_m3u8():
+    m3u8_url = 'https://c32.cdn.dycp444.com/202107/19/EOqUqAYi/500kb/hls/index.m3u8?sign=Q7euXu3gu8cqCPdjOyiyDA&t=1628280091'
+    ts_urls = extract_ts_urls(m3u8_url)
+    download_ts_file_with_pool(m3u8_url, ts_urls)
+    merge_ts_file(m3u8_url, 'yu-1-aes-128-key-7bdf6a0bc9daaffd.mp4')
+
 
 if __name__ == '__main__':
-    url = 'http://51ck.cc/vodplay/1641-1-1.html'
-    download_video(url)
+    url = 'http://51ck.cc/vodplay/3685-1-1.html'
+    # download_video(url)
+    # download_by_m3u8()
+    decrypt_aes_128()
