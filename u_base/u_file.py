@@ -16,6 +16,7 @@ import u_base.u_log as log
 
 __all__ = [
     'get_content',
+    'get_cache_content',
     'convert_windows_path',
     'get_json',
     'read_content',
@@ -39,6 +40,15 @@ COMMON_HEADERS = {
 
 def convert_windows_path(path):
     return re.sub(r"[\\/?*<>|\":]+", '-', path)
+
+
+def get_cache_content(url: str, cache_file: str, use_cache=False):
+    if use_cache and os.path.isfile(cache_file):
+        return read_content(cache_file)
+    else:
+        html_content = get_content(url)
+        write_content(cache_file, html_content)
+        return html_content
 
 
 def get_content(path, encoding=None, **kwargs):
