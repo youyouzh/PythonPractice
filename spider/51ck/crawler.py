@@ -5,10 +5,12 @@ import shutil
 import os
 import json
 
+from bs4 import BeautifulSoup
+
 import u_base.u_file as u_file
 import u_base.u_log as log
 from urllib.parse import urlparse, urljoin
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 
 _REQUESTS_KWARGS = {
     'proxies': {
@@ -24,6 +26,33 @@ def get_ts_ave_dir(m3u8_url: str):
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
     return save_dir
+
+
+def crawl_video_info(template_page_url: str):
+    max_page = 140
+    video_infos = []
+    parse_url = urlparse(template_page_url)
+    for index in range(1, max_page):
+        log.info('begin crawl page.({}/{})'.format(index, max_page))
+        html_content = u_file.get_content(template_page_url.format(index))
+        soup = BeautifulSoup(html_content, 'lxml')
+
+        video_nodes = soup.select('div.stui-vodlist__detail')
+        log.info('video size: {}'.format(len(video_nodes)))
+        for video_node in video_nodes:
+            a_node = video_node.select_one('h4 > a')
+            span_node = video_node.select('p.sub > span')
+            view_count = int(span_node[2].text.strip())
+            like_count = int(span_node[1].text.strip())
+            video_infos.append({
+                'title': a_node.string,
+                'url': parse_url._replace(path=a_node['href']).geturl(),
+                'view': view_count,
+                'like': like_count
+            })
+        video_infos.sort(key=lambda x: x['like'], reverse=True)
+        u_file.cache_json(video_infos, r'result\video-infos.jon')
+    return video_infos
 
 
 def extract_m3u8_url(html_content: str) -> str or None:
@@ -82,15 +111,14 @@ def download_ts_file(m3u8_url: str, ts_urls: List[str]):
 def download_ts_file_with_pool(m3u8_url: str, ts_urls: List[str]):
     pool = ThreadPoolExecutor(10)
     save_dir = get_ts_ave_dir(m3u8_url)
-    task_futures = []
+    tasks = []
     for ts_url in ts_urls:
         file_name = u_file.get_file_name_from_url(ts_url)
         future = pool.submit(u_file.download_file, ts_url, file_name, save_dir, **_REQUESTS_KWARGS)
-        task_futures.append(future)
+        tasks.append(future)
 
-    for future in task_futures:
-        if future.done():
-            log.info('tak done')
+    wait(tasks, return_when=ALL_COMPLETED)
+    log.info('all ts file download success.')
 
 
 def merge_ts_file(m3u8_url: str, video_name: str):
@@ -119,5 +147,5 @@ def download_video(page_url: str):
 
 
 if __name__ == '__main__':
-    url = 'http://51ck.cc/vodplay/9704-1-1.html'
+    url = 'http://51ck.cc/vodplay/1641-1-1.html'
     download_video(url)
