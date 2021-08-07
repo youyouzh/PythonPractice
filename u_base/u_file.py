@@ -42,13 +42,20 @@ def convert_windows_path(path):
     return re.sub(r"[\\/?*<>|\":]+", '-', path)
 
 
-def get_cache_content(url: str, cache_file: str, use_cache=False):
+def get_cache_content(url: str, cache_file: str, use_cache=True, encoding=None, **kwargs):
     if use_cache and os.path.isfile(cache_file):
+        log.info('load content from cache: {}'.format(cache_file))
+        ready_dir(cache_file)
         return read_content(cache_file)
     else:
-        html_content = get_content(url)
+        html_content = get_content(url, encoding, **kwargs)
         write_content(cache_file, html_content)
         return html_content
+
+
+def ready_dir(path: str):
+    if not os.path.isdir(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
 
 
 def get_content(path, encoding=None, **kwargs):
