@@ -14,16 +14,17 @@ from urllib.parse import urlparse, urljoin
 from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 
 _REQUESTS_KWARGS = {
-    'proxies': {
-      'https': 'http://127.0.0.1:1080',
-    },
+    # 'proxies': {
+    #   'https': 'http://127.0.0.1:1080',
+    # },
 }
 
 
 def get_ts_ave_dir(m3u8_url: str):
     parse_url = urlparse(urljoin(m3u8_url, ''))
     url_path = os.path.dirname(parse_url.path)
-    save_dir = os.path.join(r'result', u_file.convert_windows_path(url_path))
+    save_dir = os.path.join(r'result\ts', u_file.convert_windows_path(url_path))
+    u_file.ready_dir(save_dir)
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
     return save_dir
@@ -81,13 +82,12 @@ def extract_title(html_content: str):
 
 
 def extract_ts_urls(m3u8_url: str) -> List[str]:
-    response = u_file.get_content(m3u8_url, **_REQUESTS_KWARGS)
+    # m3u8 cache file path
     parse_url = urlparse(m3u8_url)
-    cache_file = u_file.convert_windows_path(parse_url.path)
-    cache_file = os.path.join(r'result', cache_file)
-    if os.path.isfile(cache_file):
-        return u_file.load_json_from_file(cache_file)
+    cache_file = os.path.join(r'result\m3u8', u_file.convert_windows_path(parse_url.path))
 
+    # extract full ts file urls
+    response = u_file.get_cache_content(m3u8_url, cache_file, **_REQUESTS_KWARGS)
     lines = response.split('\n')
     ts_urls: List[str] = [urljoin(m3u8_url, line.rstrip()) for line in lines if line.rstrip().endswith('.ts')]
     if len(ts_urls) == 0:
@@ -95,7 +95,6 @@ def extract_ts_urls(m3u8_url: str) -> List[str]:
         return []
 
     log.info('total ts urls size: {}'.format(len(ts_urls)))
-    u_file.cache_json(ts_urls, cache_file)
     return ts_urls
 
 
@@ -122,8 +121,9 @@ def download_ts_file_with_pool(m3u8_url: str, ts_urls: List[str]):
     log.info('all ts file download success.')
 
 
-def merge_ts_file(m3u8_url: str, video_name: str):
-    merge_file_path = os.path.join(r'result', video_name)
+def merge_ts_file(m3u8_url: str, video_name: str, decrypt_function=None):
+    merge_file_path = os.path.join(r'result\video', video_name + '.mp4')
+    u_file.ready_dir(merge_file_path)
     merge_file_handle = open(merge_file_path, 'wb')
 
     ts_dir = get_ts_ave_dir(m3u8_url)
@@ -132,59 +132,48 @@ def merge_ts_file(m3u8_url: str, video_name: str):
             continue
         ts_filepath = os.path.join(ts_dir, ts_filename)
         ts_file_handle = open(ts_filepath, 'rb')
+        ts_file_content = ts_file_handle.read()
+        if decrypt_function is not None:
+            # if defined decrypt function, decrypt the data
+            ts_file_content = decrypt_function(m3u8_url, ts_file_content)
         shutil.copyfileobj(ts_file_handle, merge_file_handle)
+        merge_file_handle.write(ts_file_content)
         ts_file_handle.close()
     merge_file_handle.close()
     log.info('merge file success: {}'.format(merge_file_path))
 
 
-def download_video(page_url: str):
+def download_by_page_url(page_url: str):
     response = u_file.get_content(page_url)
     m3u8_url = extract_m3u8_url(response)
     title = extract_title(response)
     ts_urls = extract_ts_urls(m3u8_url)
     download_ts_file_with_pool(m3u8_url, ts_urls)
-    merge_ts_file(m3u8_url, title + '.mp4')
-
-def get_asc_key(key):
-    '''
-    获取密钥，把16进制字节码转换成ascii码
-    :param key:从网页源代码中获取的16进制字节码
-    :return: ascii码格式的key
-    '''
-    # 最简洁的写法
-    # asc_key = [chr(int(i,16)) for i in key.split(',')]
-    # 通俗易懂的写法
-    key = key.split(',')
-    asc_key = ''
-    for i in key:
-        i = int(i, 16)  # 16进制转换成10进制
-        i = chr(i)  # 10进制转换成ascii码
-        asc_key += i
-    return asc_key
+    merge_ts_file(m3u8_url, title)
 
 
-def decrypt_aes_128():
+def decrypt_aes(m3u8_url: str, encrypt_data):
+    # get decrypt key
+    key_url = urljoin(m3u8_url, 'key.key')
+    parse_url = urlparse(key_url)
+    cache_file = os.path.join(r'result\m3u8', u_file.convert_windows_path(parse_url.path))
+    key = u_file.get_cache_content(key_url, cache_file)
+    log.info('get key success: {}'.format(key))
+
+    # aes decrypt input
     iv = b'0000000000000000'
-    key = '21464093fdd9cef9'
-    decrypt_file_handler = open(r'result\yu-3-aes-128-key-21464093fdd9cef9.mp4', 'rb')
-    output_file_handler = open(r'result\yu-3.mp4', 'wb')
-    part = decrypt_file_handler.read()
     cipher = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv)
-    plain_data = cipher.decrypt(part)
-    if part:
-        output_file_handler.write(plain_data)
+    decrypt_data = cipher.decrypt(encrypt_data)
+    return decrypt_data.rstrip(b'\0')
 
 
-def download_by_m3u8():
-    m3u8_url = 'https://c32.cdn.dycp444.com/202107/19/EOqUqAYi/500kb/hls/index.m3u8?sign=Q7euXu3gu8cqCPdjOyiyDA&t=1628280091'
+def download_by_m3u8(m3u8_url: str, video_name: str):
     ts_urls = extract_ts_urls(m3u8_url)
     download_ts_file_with_pool(m3u8_url, ts_urls)
-    merge_ts_file(m3u8_url, 'yu-1-aes-128-key-7bdf6a0bc9daaffd.mp4')
+    merge_ts_file(m3u8_url, video_name, decrypt_aes)
 
 
 if __name__ == '__main__':
     url = 'http://51ck.cc/vodplay/3685-1-1.html'
-    # download_video(url)
-    # download_by_m3u8()
-    decrypt_aes_128()
+    download_by_page_url(url)
+    # decrypt_aes()
