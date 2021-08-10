@@ -45,9 +45,9 @@ def convert_windows_path(path):
 def get_cache_content(url: str, cache_file: str, use_cache=True, encoding=None, **kwargs):
     if use_cache and os.path.isfile(cache_file):
         log.info('load content from cache: {}'.format(cache_file))
-        ready_dir(cache_file)
         return read_content(cache_file)
     else:
+        ready_dir(cache_file)
         html_content = get_content(url, encoding, **kwargs)
         write_content(cache_file, html_content)
         return html_content
@@ -273,6 +273,19 @@ def convert_image_format(image_path, delete=False):
     image.close()
     if delete:
         os.remove(image_path)
+
+
+def get_all_sub_files_with_cache(root_path, contain_dir=False, use_cache=True):
+    cache_file = convert_windows_path(root_path)
+    cache_file = os.path.join(r'cache', cache_file)
+    if use_cache and os.path.isfile(cache_file):
+        log.info('load content from cache: {}'.format(cache_file))
+        return load_json_from_file(cache_file)
+    else:
+        ready_dir(cache_file)
+        sub_files = get_all_sub_files(root_path, contain_dir=contain_dir)
+        cache_json(sub_files, cache_file)
+        return sub_files
 
 
 def get_all_sub_files(root_path, all_files=None, contain_dir=False):
