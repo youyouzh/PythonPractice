@@ -92,7 +92,7 @@ def get_content(path, encoding=None, **kwargs):
         return False
 
 
-def get_json(url, params=None, headers=None) -> dict:
+def get_json(url, params=None, headers=None, **kwargs) -> dict:
     """
     request json from url
     :param url: url
@@ -100,11 +100,15 @@ def get_json(url, params=None, headers=None) -> dict:
     :param headers: headers
     :return: json
     """
+    default_headers = {}
+    default_headers.update(COMMON_HEADERS)
+    if headers is not None:
+        default_headers.update(headers)
     try:
-        response = requests.get(url, params=params, headers=headers)
+        response = requests.get(url, params=params, headers=default_headers, **kwargs)
     except Exception as e:
         log.warn('request error and try again. {}'.format(e))
-        response = requests.get(url, params=params, headers=headers)
+        response = requests.get(url, params=params, headers=default_headers, **kwargs)
     return json.loads(response.text)
 
 
