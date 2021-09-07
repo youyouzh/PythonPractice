@@ -179,6 +179,22 @@ def get_question_detail(question_detail_url: str) -> dict:
     return question_info
 
 
+def get_video_notes(period_id: int) -> list:
+    params = {
+        '_ts_': '1621612527891',
+        'periodId': str(period_id),
+        'index': '1'
+    }
+    response = u_file.get_json('https://rt.qingwk.com/course/note/list', params=params)
+    if 'data' not in response or 'datas' not in response['data']:
+        log.error('The response has not notes')
+        return []
+    log.info('pageCount: {}, rowCount: {}'.format(response['data']['pageCount'], response['data']['rowCount']))
+    notes = response['data']['datas']
+    log.info('notes count: {}'.format(len(notes)))
+    return notes
+
+
 def begin_crawl(course_url: str, tag: str = 'default'):
     course_info = get_course_info(course_url)
     for stage_course in course_info['stageCourses']:
@@ -230,20 +246,62 @@ def output_course_question(name):
     template = u_file.read_content(r'cache/template.html')
     html_content = ''
     for stage_course in course_info['stageCourses']:
-        html_content += '<h1><a href="{}" target="_blank">{}</a></h1>'.format(stage_course['url'],
-                                                                              stage_course['courseName'])
+        html_content += '<h1><a href="{}" target="_blank">{}</a></h1>\n'\
+            .format(stage_course['url'], stage_course['courseName'])
 
         # 如果有题目的话，列出题目
         questions = stage_course['questions']
         if len(questions) > 0:
             for question in questions:
                 # question_detail_content = question['detail']['content']
-                html_content += '<h4><a href="{}" target="_blank">{}</a></h4>'.format(question['url'],
-                                                                                      question['title'])
+                html_content += '<h4><a href="{}" target="_blank">{}</a></h4>\n'\
+                    .format(question['url'], question['title'])
                 # html_content += question['detail']['content']
+
     template = template.replace('{{title}}', course_info['name'])
     template = template.replace('{{content}}', html_content)
     u_file.write_content(r'cache\output-title-{}.html'.format(name), template)
+
+
+def output_course_chapter_notes(name):
+    course_data_path = r'cache\course-info-{}.json'.format(name)
+    course_info = u_file.load_json_from_file(course_data_path)
+
+    content = '# {}\n\n'.format(name)
+    log.info('stage_course size: {}'.format(len(course_info['stageCourses'])))
+    for stage_course in course_info['stageCourses']:
+        chapters = stage_course['chapters']
+        content += '## {}\n\n'.format(stage_course['courseName'])
+        log.info('course {} chapters size: {}'.format(stage_course['courseName'], len(chapters)))
+        if len(chapters) <= 0:
+            continue
+
+        # 遍历每一章节
+        for chapter in chapters:
+            content += '\n### {}\n\n'.format(chapter['name'])
+
+            periods = chapter['periods']
+            log.info('chapter: {}, periods size: {}'.format(chapter['name'], len(periods)))
+            if len(periods) <= 0:
+                continue
+
+            # 遍历每个视频讲解
+            for period in periods:
+                # 获取笔记并保存
+                content += '\n#### {}\n\n'.format(period['name'])
+                notes = get_video_notes(period['id'])
+                log.info('period: {}, notes size: {}'.format(period['name'], len(notes)))
+                if len(notes) <= 0:
+                    log.info('The period: {}, notes is empty.'.format(period['name']))
+                    continue
+
+                for note in notes:
+                    if len(note['content']) <= 5:
+                        log.info('The not is short: {}'.format(note['content']))
+                        continue
+                    content += note['content'] + '\n---------{}\n'.format(note['likeNum'])
+        u_file.write_content(r'cache\output-note-{}.md'.format(name), content)
+    u_file.write_content(r'cache\output-note-{}.md'.format(name), content)
 
 
 if __name__ == '__main__':
@@ -251,8 +309,8 @@ if __name__ == '__main__':
     # get_question_infos(step_home_url)
     # get_question_detail(question_home_url)
     # name =  '动漫插画班', '二次元插画班', '日系插画精品-商业', '动漫厚涂班',
-
-    course_names = ['动漫插画班', '二次元插画班', '日系插画精品-商业', '动漫厚涂班']
-    for course_name in course_names:
-        # crawl_courses(course_name)
-        output_course_question(course_name)
+    output_course_chapter_notes('动漫插画班')
+    # course_names = ['动漫插画班', '二次元插画班', '日系插画精品-商业', '动漫厚涂班']
+    # for course_name in course_names:
+    #     # crawl_courses(course_name)
+    #     output_course_question(course_name)
