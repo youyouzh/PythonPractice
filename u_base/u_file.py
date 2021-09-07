@@ -9,8 +9,9 @@ import json
 import re
 import urllib.parse
 import requests
-import threadpool
 from PIL import Image
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
+
 
 import u_base.u_log as log
 
@@ -24,7 +25,7 @@ __all__ = [
     'get_file_name_from_url',
     'download_image',
     'download_file',
-    'download_by_pool',
+    'download_files_with_pool',
     'convert_image_format',
     'get_all_sub_files',
     'parse_json',
@@ -246,17 +247,16 @@ def download_file(url, filename, path=os.path.curdir, replace=False, **kwargs):
     return True
 
 
-# 使用线程池并行下载
-def download_by_pool(directory, urls=None, pool_size=8):
-    # 创建文件夹
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    log.info('begin download image, url size: ' + str(len(urls)))
-    pool = threadpool.ThreadPool(pool_size)
-    params = map(lambda v: (None, {'directory': directory, 'url': v}), urls)
-    task_list = threadpool.makeRequests(download_file, params)
-    [pool.putRequest(task) for task in task_list]
-    pool.wait()
+def download_files_with_pool(urls: list, path, replace=False, **kwargs):
+    pool = ThreadPoolExecutor(10)
+    tasks = []
+    for url in urls:
+        filename = get_file_name_from_url(urls)
+        future = pool.submit(download_file, url, filename, path, replace=replace, **kwargs)
+        tasks.append(future)
+
+    wait(tasks, return_when=ALL_COMPLETED)
+    log.info('all ts file download success.')
 
 
 def convert_image_format(image_path, delete=False):
