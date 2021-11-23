@@ -41,13 +41,14 @@ def download_image_collect(image_collect: dict, save_dir=r'result'):
     for image_collection_img_element in image_collection_img_elements:
         current_image_url = image_collection_img_element['src']
         current_image_url = current_image_url.replace('-lp', '')
+        current_image_url = 'http:' + current_image_url
         filename = image_collect['title'] + '-' + u_file.get_file_name_from_url(current_image_url)
         u_file.download_file(current_image_url, filename, save_dir)
 
 
 def crawl_all_picture():
-    base_url = 'http://www.jj20.com/bz/nxxz/list_7_cc_12_1.html'
-    save_dir = r'result-high'
+    base_url = 'http://www.jj20.com/bz/zrfg/list_1_cc_10_1.html'
+    save_dir = r'result-风景'
 
     base_url = base_url.replace('_1.html', '_{}.html')
     begin_index = 0

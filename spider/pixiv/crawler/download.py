@@ -216,13 +216,13 @@ def get_10_20(number: int):
 
 # 下载TOP收藏图片
 def download_top():
-    directory = r"result/illusts-2020"
+    directory = r"result/illusts-2021"
     top_illusts = query_top_total_bookmarks(count=50000)
     log.info("download illusts top size: {}".format(len(top_illusts)))
     for top_illust in top_illusts:
-        if top_illust['total_bookmarks'] > 15026:
-            log.info('skip illust: {}'.format(top_illust['id']))
-            continue
+        # if top_illust['total_bookmarks'] > 15026:
+        #     log.info('skip illust: {}'.format(top_illust['id']))
+        #     continue
         log.info("begin download illust: {}".format(top_illust))
         download_by_illustration_id(directory, top_illust["id"], spilt_bookmark=False,
                                     skip_min_width=1000, skip_min_height=1000)
@@ -278,10 +278,11 @@ def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None, check_
 
 if __name__ == '__main__':
     # download_by_pool()
-    # download_top()
-    # tag = '四宮かぐや'
+    download_top()
+    # tag = 'プリコネ'
     # download_by_tag(os.path.join(r'.\result\by-tag', tag), tag)
+    # download_by_illustration_id(r'.\result\illust', illustration_id=43302392, skip_ignore=False, skip_download=False)
     # download_task_by_user_id(save_dir=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\favorite\立绘-无场景\395595-cadillac-清爽-白色背景-少女')
-    # download_task_by_user_id(user_id=3452804)
-    download_task_by_user_id(illust_id=87469781, check_download=False)
+    # download_task_by_user_id(illust_id=74853306)
+    # download_task_by_user_id(user_id=946272, check_download=True)
 

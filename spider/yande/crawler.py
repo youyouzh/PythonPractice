@@ -27,6 +27,7 @@ CRAWL_URLS = {
 # topless
 # fellatio
 
+
 def get_post_info(page) -> list:
     params = {
         'page': page,

@@ -256,7 +256,7 @@ def download_files_with_pool(urls: list, path, replace=False, **kwargs):
         tasks.append(future)
 
     wait(tasks, return_when=ALL_COMPLETED)
-    log.info('all ts file download success.')
+    log.info('all file download task pool finished.')
 
 
 def convert_image_format(image_path, delete=False):

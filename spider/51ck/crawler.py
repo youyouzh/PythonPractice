@@ -62,6 +62,7 @@ def extract_m3u8_url(html_content: str) -> str or None:
     search_content = re.search(pattern, html_content)
     if search_content is None:
         log.error('Can not match any m3u8 url.')
+        exit(0)
         return None
     init_json = search_content.group(1)
     json_data = json.loads(init_json)
@@ -144,9 +145,18 @@ def merge_ts_file(m3u8_url: str, video_name: str, decrypt_function=None):
 
 
 def download_by_page_url(page_url: str):
+    """
+    下载 hsck.us
+    :param page_url: 视频页面地址
+    :return: None
+    """
     response = u_file.get_content(page_url)
     m3u8_url = extract_m3u8_url(response)
     title = extract_title(response)
+    download_with_m3u8_url(title, m3u8_url)
+
+
+def download_with_m3u8_url(title, m3u8_url):
     ts_urls = extract_ts_urls(m3u8_url)
     download_ts_file_with_pool(m3u8_url, ts_urls)
     merge_ts_file(m3u8_url, title)
@@ -174,6 +184,6 @@ def download_by_m3u8(m3u8_url: str, video_name: str):
 
 
 if __name__ == '__main__':
-    url = 'http://51ck.cc/vodplay/3685-1-1.html'
-    download_by_page_url(url)
+    # download_by_page_url('http://823ck.cc/vodplay/1649-1-1.html')
+    download_with_m3u8_url('xx', 'https://ckcdnz1.cdn2020.com/video/m3u8/2020/06/07/ce331a28/index.m3u8')
     # decrypt_aes()

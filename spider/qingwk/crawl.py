@@ -297,7 +297,7 @@ def output_course_chapter_notes(name):
 
                 for note in notes:
                     if len(note['content']) <= 5:
-                        log.info('The not is short: {}'.format(note['content']))
+                        log.info('The note is short: {}'.format(note['content']))
                         continue
                     content += note['content'] + '\n---------{}\n'.format(note['likeNum'])
         u_file.write_content(r'cache\output-note-{}.md'.format(name), content)
@@ -309,7 +309,7 @@ if __name__ == '__main__':
     # get_question_infos(step_home_url)
     # get_question_detail(question_home_url)
     # name =  '动漫插画班', '二次元插画班', '日系插画精品-商业', '动漫厚涂班',
-    output_course_chapter_notes('动漫插画班')
+    output_course_chapter_notes('二次元插画班')
     # course_names = ['动漫插画班', '二次元插画班', '日系插画精品-商业', '动漫厚涂班']
     # for course_name in course_names:
     #     # crawl_courses(course_name)

@@ -172,9 +172,9 @@ if __name__ == '__main__':
     # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id, use_cache=False)
     base_dir = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result'
     # collect_illusts(r'ignore', is_small_size, 10)  # ゴスロリ  雪  バロック世界  ワンピース服  動物擬人化 雪風  セーラー服
-    # update_dir_illust_tag(os.path.join(base_dir, r'by-user\10669991-Kätzchen-r-18-诱惑'), 'ignore')
-    # update_dir_user_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\arrange\cache', 'download')
-    update_dir_user_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\arrange\cache', 'download')
+    update_dir_illust_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore', 'ignore')
+    # update_dir_user_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore', 'download')
+    # update_dir_user_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore', 'ignore')
     # check_user_id(target_directory)
     # extract_top(target_directory, 20)
 
