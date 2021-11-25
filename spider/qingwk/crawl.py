@@ -19,6 +19,7 @@ config = {
 }
 CRAWL_HOST = 'https://www.qingwk.com'
 IMAGE_HOST = 'https://img.qingwk.com/'
+INIT_JSON_PARSE_PATTERN = re.compile(r'__INITIAL_STATE__=(.+);\(function')
 COURSE = [
     {
         'name': '动漫插画班',
@@ -37,23 +38,6 @@ COURSE = [
         'url': 'https://www.qingwk.com/school/dmht'
     },
 ]
-
-
-def extract_init_json_data(html_content: str) -> dict:
-    """
-    匹配html中的初始化json数据
-    :param html_content: html内容
-    :return: json字典
-    """
-    # 返回结果通过js处理成document，只能正则匹配
-    pattern = re.compile(r'__INITIAL_STATE__=(.+);\(function')
-    search_content = re.search(pattern, html_content)
-    if search_content is None:
-        log.error('Can not match any data.')
-        return {}
-    init_json = search_content.group(1)
-    json_data = json.loads(init_json)
-    return json_data
 
 
 def get_question_url(question_id) -> str:
@@ -104,7 +88,7 @@ def get_course_info(course_url: str) -> dict:
     html_content = u_file.get_cache_content(course_url, cache_file, use_cache=False)
 
     # 返回结果通过js处理成document，只能正则匹配
-    json_data = extract_init_json_data(html_content)
+    json_data = u_file.extract_init_json_data(html_content, INIT_JSON_PARSE_PATTERN)
     class_detail = json_data['school']['classDetail']
 
     # 阶段作业，字段： id, name, summary, coverImageUrl
@@ -141,7 +125,7 @@ def get_stage_course_info(stage_course_url: str) -> dict:
     html_content = u_file.get_cache_content(stage_course_url, cache_file)
 
     # 返回结果通过js处理成document，只能正则匹配
-    json_data = extract_init_json_data(html_content)
+    json_data = u_file.extract_init_json_data(html_content, INIT_JSON_PARSE_PATTERN)
     questions = json_data['coach']['subjectList']
     log.info('question size: {}'.format(len(questions)))
 
@@ -170,7 +154,7 @@ def get_question_detail(question_detail_url: str) -> dict:
     cache_file = r'cache\course-question-info.html'
     html_content = u_file.get_cache_content(question_detail_url, cache_file)
 
-    json_data = extract_init_json_data(html_content)
+    json_data = u_file.extract_init_json_data(html_content, INIT_JSON_PARSE_PATTERN)
     question_detail = json_data['coach']['subject']
     # 'subjectQuestionPage',
     keep_fields = ['id', 'title', 'summary', 'tip', 'name', 'keywords', 'previousId', 'nextId',
