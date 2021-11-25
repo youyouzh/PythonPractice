@@ -19,12 +19,31 @@ config = {
 }
 CRAWL_HOST = 'https://www.pinterest.com/'
 INIT_JSON_PARSE_PATTERN = re.compile('__PWS_DATA__[^{]+(.+www"})</script>')
+_REQUESTS_KWARGS = {
+    'proxies': {
+      'https': 'http://127.0.0.1:1080',
+    },
+}
+
+
+def extract_boards() -> list:
+    """
+    获取pinterest用户的图板列表
+    :return: list
+    """
+    return ["人体", "人形", "几何石膏", "动漫-和服", "动漫-萝莉", "古装", "可爱", "技法", "技法-头发", "技法-头部-眼睛-头发",
+            "技法-头饰-饰品", "技法-裙子", "材质", "构图", "洛丽塔-2", "洛丽塔-插画图鉴", "特效", "脸型", "色卡", "萝莉塔",
+            "蓝色", "静物素描"]
 
 
 def extract_pins(page_url: str) -> list:
-    cache_file = r'cache\page.html'
+    """
+    从页面中提取所有的pin图信息
+    :param page_url: 页面url
+    :return: pin info list
+    """
     log.info('begin request page: {}'.format(page_url))
-    html_content = u_file.get_cache_content(page_url, cache_file, use_cache=False)
+    html_content = u_file.get_content_with_cache(page_url, **_REQUESTS_KWARGS)
 
     # 返回结果通过js处理成document，只能正则匹配
     json_data = u_file.extract_init_json_data(html_content, INIT_JSON_PARSE_PATTERN)
@@ -49,16 +68,20 @@ def extract_pins(page_url: str) -> list:
             'image_signature': pin['image_signature'],
             'link': pin['link']
         })
+    log.info('extract pins success. size: {}'.format(len(pin_infos)))
     return pin_infos
 
 
-def download_pins(pins: list):
-    log.info('begin download pins image, size: {}'.format(len(pins)))
+def download_pins(pins: list, board_name: str):
+    log.info('begin download board: {} pins image, size: {}'.format(board_name, len(pins)))
     save_dir = r'result'
+    save_dir = os.path.join(save_dir, board_name)
     for pin in pins:
-        u_file.download_file(pin['image_url'], pin['id'], save_dir)
+        u_file.download_file(pin['image_url'], pin['id'], path=save_dir, **_REQUESTS_KWARGS)
+    log.info('end download board: {} pins image, size: {}'.format(board_name, len(pins)))
 
 
 if __name__ == '__main__':
-    pins = extract_pins('https://www.pinterest.com/zhyouyui/%E6%9D%90%E8%B4%A8/')
-    download_pins(pins)
+    for board in extract_boards():
+        pins = extract_pins('https://www.pinterest.com/zhyouyui/{}/'.format(board))
+        download_pins(pins, board)
