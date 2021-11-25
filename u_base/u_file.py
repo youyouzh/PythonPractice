@@ -30,6 +30,7 @@ __all__ = [
     'get_all_sub_files',
     'parse_json',
     'cache_json',
+    'extract_init_json_data',
     'load_json_from_file'
 ]
 
@@ -355,3 +356,52 @@ def load_json_from_file(json_file):
         json_data = json.load(file_handle)
     file_handle.close()
     return json_data
+
+
+def extract_init_json_data(html_content: str, pattern: re.Pattern) -> dict:
+    """
+    匹配html中的初始化json数据，一般适用于那种将初始化json返回的html页面，他们通过json构建dom，爬虫直接提取json
+    :param html_content: html内容
+    :param pattern: json提取正则表达式，注意将json作为第一个分组， 示例 r'__INITIAL_STATE__=(.+);'
+    :return: json字典
+    """
+    # 返回结果通过js处理成document，只能正则匹配
+    search_content = re.search(pattern, html_content)
+    if search_content is None:
+        log.error('Can not match any data.')
+        return {}
+    init_json = search_content.group(1)
+    try:
+        json_data = json.loads(init_json)
+        return json_data
+    except json.decoder.JSONDecodeError:
+        log.error('can not parse json data: {}'.format(init_json))
+    return {}
+
+
+def m_get(data: dict, key: str, default=None):
+    """
+    用于获取多层级的字典元素
+    :param data: dict自动
+    :param key: key字符串
+    :param default: 默认值
+    """
+    keys = key.split('.')
+    return rget(data, keys, default)
+
+
+def rget(data, keys, default=None):
+    """
+    递归获取dict数据
+    """
+    key = keys.pop(0)
+    try:
+        elem = data[key]
+    except KeyError:
+        return default
+    except TypeError:
+        log.error('The data is not dict.')
+        return None
+    if not keys:
+        return elem
+    return rget(elem, keys, default)

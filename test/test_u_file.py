@@ -40,3 +40,8 @@ def test_get_all_sub_files():
     root_path = r'D:\BaiduNetdiskDownload\最新免费国外hdr环境高清贴图批量下载_By佐邦视觉'
     file_paths = u_file.get_all_sub_files(root_path)
     u_log.info('file size: {}'.format(len(file_paths)))
+
+
+def test_m_get():
+    u_unittest.assert_eq(u_file.m_get({'a': {'b': {'c': 1}}}, 'a.b.c', 2), 1)
+    u_unittest.assert_eq(u_file.m_get({'a': {'b': {'c': 1}}}, 'a.b.d', 2), 2)
