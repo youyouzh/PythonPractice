@@ -41,7 +41,7 @@ __all__ = [
 ]
 
 COMMON_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
-                    'Chrome/88.0.4324.146 Safari/537.36'
+                    'Chrome/96.0.4664.45 Safari/537.36'
 COMMON_HEADERS = {
     'user-agent': COMMON_USER_AGENT
 }
@@ -86,13 +86,13 @@ def get_abs_cache_path():
     return os.path.join(os.getcwd(), 'cache')
 
 
-def ready_dir(path: str):
+def ready_dir(file_path: str):
     """
     准备相关文件夹，检查path所在文件夹是否存在，若不存在则创建
-    :param path: 文件路径
+    :param file_path: 文件路径，不能是文件夹路径
     :return: None
     """
-    dir_path = os.path.dirname(path)
+    dir_path = os.path.dirname(file_path)
     if not os.path.isdir(dir_path):
         log.info('the file path is not exist. create: {}'.format(dir_path))
         os.makedirs(dir_path)
@@ -250,9 +250,9 @@ def download_file(url, filename, path=os.path.curdir, replace=False, **kwargs):
         filename += os.path.splitext(url)[-1]
 
     # 指定文件夹不存在则创建
-    ready_dir(path)
     filename = filename[:200]  # windows文件名称不能超过255个字符
     file_path = os.path.join(path, filename)
+    ready_dir(file_path)
 
     # 如果文件已经下载并且不替换，则直接结束
     if os.path.exists(file_path) and not replace:
@@ -267,7 +267,7 @@ def download_file(url, filename, path=os.path.curdir, replace=False, **kwargs):
             out_file.write(response.content)
         del response
     except Exception as e:
-        log.error('download file file. {}'.format(e))
+        log.error('download file failed. {}'.format(e))
         return False
     log.info('end download file. save file: {}'.format(file_path))
     return True
@@ -361,8 +361,7 @@ def cache_json(json_data, cache_file=None) -> str:
         cache_file = get_abs_cache_path()
         cache_file = os.path.join(cache_file, 'cache-' + time.strftime('%Y-%m-%d-%H-%M-%S',
                                                                        time.localtime(time.time())) + '.json')
-    cache_file_dir = os.path.split(cache_file)[0]
-    ready_dir(cache_file_dir)
+    ready_dir(cache_file)
     json.dump(json_data, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     return cache_file
 

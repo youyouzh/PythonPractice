@@ -25,8 +25,6 @@ def get_ts_ave_dir(m3u8_url: str):
     url_path = os.path.dirname(parse_url.path)
     save_dir = os.path.join(r'result\ts', u_file.convert_windows_path(url_path))
     u_file.ready_dir(save_dir)
-    if not os.path.isdir(save_dir):
-        os.mkdir(save_dir)
     return save_dir
 
 
