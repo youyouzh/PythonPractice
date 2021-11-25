@@ -16,56 +16,113 @@ from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 import u_base.u_log as log
 
 __all__ = [
-    'get_content',
-    'get_cache_content',
     'convert_windows_path',
+    'get_file_name_from_url',
+    'covert_url_to_filename',
+    'get_abs_cache_path',
+    'ready_dir',
+    'get_content_with_cache',
+    'get_content',
     'get_json',
     'read_content',
+    'read_file_as_list',
     'write_content',
-    'get_file_name_from_url',
-    'download_image',
     'download_file',
     'download_files_with_pool',
     'convert_image_format',
+    'get_all_sub_files_with_cache',
     'get_all_sub_files',
-    'parse_json',
     'cache_json',
+    'dump_json_to_file',
+    'load_json_from_file',
     'extract_init_json_data',
-    'load_json_from_file'
+    'COMMON_USER_AGENT',
+    'm_get'
 ]
 
+COMMON_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
+                    'Chrome/88.0.4324.146 Safari/537.36'
 COMMON_HEADERS = {
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
-                  'Chrome/88.0.4324.146 Safari/537.36'
+    'user-agent': COMMON_USER_AGENT
 }
 
 
 def convert_windows_path(path):
+    """
+    将path中的特殊字符进行替换，转成Windows兼容的路径
+    :param path: 原始路径
+    :return: 转换后的路径
+    """
     return re.sub(r"[\\/?*<>|\":]+", '-', path)
 
 
-def get_cache_content(url: str, cache_file: str, use_cache=True, encoding=None, **kwargs):
-    if use_cache and os.path.isfile(cache_file):
-        log.info('load content from cache: {}'.format(cache_file))
-        return read_content(cache_file)
-    else:
-        ready_dir(cache_file)
-        html_content = get_content(url, encoding, **kwargs)
-        write_content(cache_file, html_content)
-        return html_content
+def get_file_name_from_url(url):
+    """
+    从url中获取文件名，适用于带后缀的url
+    :param url: 带后缀的url
+    :return: 文件名
+    """
+    file_name = os.path.basename(url)
+    return urllib.parse.unquote(file_name)
+
+
+def covert_url_to_filename(url):
+    """
+    将url转化为文件名，一帮用于缓存文件生成
+    :param url: url
+    :return: filename
+    """
+    parse_result = urllib.parse.urlsplit(url)
+    file_name = parse_result.netloc + parse_result.path + parse_result.query
+    file_name = convert_windows_path(file_name)
+    return file_name
+
+
+def get_abs_cache_path():
+    """
+    获取cache文件夹的绝对路径，方便缓存文件
+    :return:
+    """
+    return os.path.join(os.getcwd(), 'cache')
 
 
 def ready_dir(path: str):
-    if not os.path.isdir(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
-
-
-def get_content(path, encoding=None, **kwargs):
     """
-    read content from file or url
-    :param path: file or url
+    准备相关文件夹，检查path所在文件夹是否存在，若不存在则创建
+    :param path: 文件路径
+    :return: None
+    """
+    dir_path = os.path.dirname(path)
+    if not os.path.isdir(dir_path):
+        log.info('the file path is not exist. create: {}'.format(dir_path))
+        os.makedirs(dir_path)
+
+
+def get_content_with_cache(url: str, cache_file: str = None, use_cache=True, encoding=None, **kwargs):
+    if use_cache:
+        # 没有指定缓存文件则从url中生成缓存文件
+        if cache_file is None:
+            cache_file = os.path.join(get_abs_cache_path(), covert_url_to_filename(url))
+            cache_file = cache_file + '.txt'
+
+        # 如果缓存文件存在，则直接返回缓存文件内容
+        if os.path.isfile(cache_file):
+            log.info('load content from cache: {}'.format(cache_file))
+            return read_content(cache_file)
+    html_content = get_content(url, encoding, **kwargs)
+    if html_content:
+        ready_dir(cache_file)
+        write_content(cache_file, html_content)
+    return html_content
+
+
+def get_content(path, encoding=None, retry=0, **kwargs):
+    """
+    从文件中或者url中读取内容
+    :param path: 文件路径或者url
     :param encoding: 返回值编码
-    :return: file or url content
+    :param retry: 重试次数
+    :return: 文件内容或者url返回值
     """
     if not path:
         return False
@@ -77,12 +134,19 @@ def get_content(path, encoding=None, **kwargs):
         fin.close()
         return html_content
     try:
-        # herders = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; rv:2.0.1) Gecko/20100101 Firefox/4.0.1'}
         log.info('begin get info from web url: ' + path)
-        # time.sleep(0.5)
-        response = requests.get(path, timeout=60, headers=COMMON_HEADERS, **kwargs)
+
+        # 合并公用头部
+        default_headers = {}
+        default_headers.update(COMMON_HEADERS)
+        if kwargs.get('headers') is not None:
+            default_headers.update(kwargs.get('headers'))
+        kwargs['headers'] = default_headers
+
+        response = requests.get(path, timeout=60, **kwargs)
         if encoding is not None:
             response.encoding = encoding
+
         log.info('end get info from web url: ' + path)
         if not (400 <= response.status_code < 500):
             response.raise_for_status()
@@ -90,7 +154,12 @@ def get_content(path, encoding=None, **kwargs):
             log.error('The response text is empty.')
         return response.text
     except Exception as e:
-        log.info('get content fail. {}'.format(e))
+        log.error('get url content error. url: {}, error: {}'.format(path, e))
+        if retry > 0:
+            # 重试
+            log.info('retry get content. left times: {}'.format(retry - 1))
+            return get_content(path, encoding, retry - 1, **kwargs)
+        log.info('get content failed. {}'.format(e))
         return False
 
 
@@ -158,53 +227,11 @@ def write_content(file_path, content) -> str:
     :param content: write content
     :return: file_path
     """
-    dir_path = os.path.dirname(file_path)
-    if not os.path.isdir(dir_path):
-        log.info('the file path is not exist. create: {}'.format(dir_path))
+    ready_dir(file_path)
     fout = open(file_path, 'w', encoding='UTF-8')
     fout.write(content)
     fout.close()
     return file_path
-
-
-# download image from url
-def download_image(url, path=os.path.curdir, name=None, replace=False, prefix=''):
-    """
-    download image from url
-    :param url: image_url
-    :param prefix: image name prefix
-    :param path: save directory path
-    :param name: image name
-    :param replace: replace the same name file.
-    :return:
-    """
-    if not name:
-        name = prefix + os.path.basename(url)
-    else:
-        name = prefix + name
-
-    image_path = os.path.join(path, name)
-    if os.path.exists(image_path) and not replace:
-        log.info('The file is exist and not replace: {}'.format(image_path))
-        return True
-
-    # Write stream to file
-    log.info('begin download image from url: {}'.format(url))
-    try:
-        response = requests.get(url, stream=True)
-        with open(image_path, 'wb') as out_file:
-            out_file.write(response.content)
-        del response
-    except Exception as e:
-        log.error('download image file. {}'.format(e))
-        return False
-    log.info('end download image. save file: {}'.format(image_path))
-    return True
-
-
-def get_file_name_from_url(url):
-    file_name = os.path.basename(url)
-    return urllib.parse.unquote(file_name)
 
 
 def download_file(url, filename, path=os.path.curdir, replace=False, **kwargs):
@@ -223,9 +250,7 @@ def download_file(url, filename, path=os.path.curdir, replace=False, **kwargs):
         filename += os.path.splitext(url)[-1]
 
     # 指定文件夹不存在则创建
-    if not os.path.isdir(path):
-        os.makedirs(path)
-
+    ready_dir(path)
     filename = filename[:200]  # windows文件名称不能超过255个字符
     file_path = os.path.join(path, filename)
 
@@ -281,8 +306,7 @@ def convert_image_format(image_path, delete=False):
 
 
 def get_all_sub_files_with_cache(root_path, contain_dir=False, use_cache=True):
-    cache_file = convert_windows_path(root_path)
-    cache_file = os.path.join(r'cache', cache_file)
+    cache_file = os.path.join(get_abs_cache_path(), convert_windows_path(root_path))
     if use_cache and os.path.isfile(cache_file):
         log.info('load content from cache: {}'.format(cache_file))
         return load_json_from_file(cache_file)
@@ -326,30 +350,42 @@ def get_all_sub_files(root_path, all_files=None, contain_dir=False):
     return all_files
 
 
-def parse_json(json_str):
-    """parse json str into dict"""
-    return json.loads(json_str)
-
-
 def cache_json(json_data, cache_file=None) -> str:
+    """
+    缓存json数据
+    :param json_data: json data
+    :param cache_file: cache file, auto generate
+    :return: cache file path
+    """
     if not cache_file:
-        cache_file = os.path.join(os.getcwd(), 'cache')
+        cache_file = get_abs_cache_path()
         cache_file = os.path.join(cache_file, 'cache-' + time.strftime('%Y-%m-%d-%H-%M-%S',
                                                                        time.localtime(time.time())) + '.json')
     cache_file_dir = os.path.split(cache_file)[0]
-    if not os.path.isdir(cache_file_dir):
-        os.makedirs(cache_file_dir)
+    ready_dir(cache_file_dir)
     json.dump(json_data, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     return cache_file
 
 
 def dump_json_to_file(json_file, json_data):
+    """
+    将json数据存入文件中
+    :param json_file:
+    :param json_data:
+    :return:
+    """
+    ready_dir(json_file)
     file_handle = open(json_file, 'w', encoding='utf-8')
     json.dump(json_data, file_handle, ensure_ascii=False, indent=4)
     file_handle.close()
 
 
-def load_json_from_file(json_file):
+def load_json_from_file(json_file) -> dict:
+    """
+    从文件中加载json数据
+    :param json_file:
+    :return:
+    """
     file_handle = open(json_file, encoding='utf-8')
     json_data = None
     if os.path.isfile(json_file):

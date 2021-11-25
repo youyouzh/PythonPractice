@@ -59,7 +59,7 @@ def get_course_info_by_html(course_url: str) -> list:
     :return: 课程信息列表
     """
     cache_file = r'cache\course-step-info.html'
-    html_content = u_file.get_cache_content(course_url, cache_file)
+    html_content = u_file.get_content_with_cache(course_url, cache_file)
     soup = BeautifulSoup(html_content, 'lxml')
 
     # find the step url
@@ -85,7 +85,7 @@ def get_course_info(course_url: str) -> dict:
     :return: 课程信息
     """
     cache_file = r'cache\course-info.html'
-    html_content = u_file.get_cache_content(course_url, cache_file, use_cache=False)
+    html_content = u_file.get_content_with_cache(course_url, cache_file, use_cache=False)
 
     # 返回结果通过js处理成document，只能正则匹配
     json_data = u_file.extract_init_json_data(html_content, INIT_JSON_PARSE_PATTERN)
@@ -122,7 +122,7 @@ def get_stage_course_info(stage_course_url: str) -> dict:
     :return: 作业题目信息
     """
     cache_file = r'cache\course-step-info.html'
-    html_content = u_file.get_cache_content(stage_course_url, cache_file)
+    html_content = u_file.get_content_with_cache(stage_course_url, cache_file)
 
     # 返回结果通过js处理成document，只能正则匹配
     json_data = u_file.extract_init_json_data(html_content, INIT_JSON_PARSE_PATTERN)
@@ -152,7 +152,7 @@ def get_question_detail(question_detail_url: str) -> dict:
     :return: 题目详情数据
     """
     cache_file = r'cache\course-question-info.html'
-    html_content = u_file.get_cache_content(question_detail_url, cache_file)
+    html_content = u_file.get_content_with_cache(question_detail_url, cache_file)
 
     json_data = u_file.extract_init_json_data(html_content, INIT_JSON_PARSE_PATTERN)
     question_detail = json_data['coach']['subject']

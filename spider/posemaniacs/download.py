@@ -65,7 +65,7 @@ def through_pose(url):
                 path = path.replace('result', path_value)
                 break
         log.info('begin download image from url: {}'.format(pose_url))
-        download_status = u_file.download_image(pose_url, name=name, path=path)
+        download_status = u_file.download_file(pose_url, name=name, path=path)
         if not download_status:
             log.info('download end. index: {}'.format(index))
             break

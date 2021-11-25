@@ -88,7 +88,7 @@ def extract_ts_urls(m3u8_url: str) -> List[str]:
     cache_file = os.path.join(r'result\m3u8', u_file.convert_windows_path(parse_url.path))
 
     # extract full ts file urls
-    response = u_file.get_cache_content(m3u8_url, cache_file, **_REQUESTS_KWARGS)
+    response = u_file.get_content_with_cache(m3u8_url, cache_file, **_REQUESTS_KWARGS)
     lines = response.split('\n')
     ts_urls: List[str] = [urljoin(m3u8_url, line.rstrip()) for line in lines if line.rstrip().endswith('.ts')]
     if len(ts_urls) == 0:
@@ -167,7 +167,7 @@ def decrypt_aes(m3u8_url: str, encrypt_data):
     key_url = urljoin(m3u8_url, 'key.key')
     parse_url = urlparse(key_url)
     cache_file = os.path.join(r'result\m3u8', u_file.convert_windows_path(parse_url.path))
-    key = u_file.get_cache_content(key_url, cache_file)
+    key = u_file.get_content_with_cache(key_url, cache_file)
     log.info('get key success: {}'.format(key))
 
     # aes decrypt input
