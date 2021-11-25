@@ -254,35 +254,54 @@ def download_task_by_illust_ids():
     log.info('end')
 
 
-def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None, check_download=True):
+def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None, check_download=True, **kwargs):
     # 通过插画id查询对应的用户id
     if illust_id is not None:
         illust: Illustration = session.query(Illustration).get(illust_id)
         if illust is not None:
             user_id = illust.user_id
 
-    if check_download and is_download_user(user_id):
-        log.warn('The user hase been download. user_id: {}'.format(user_id))
-        return
-
-    # 如果给定了文件夹，一般是补充该用户的插画
+    # 如果给定了文件夹，一般是补充该用户的插画，尝试从文件夹中解析user_id
     if user_id is None and save_dir is not None:
         parse_user_id = get_illust_id(save_dir)
         if parse_user_id >= 0:
             user_id = parse_user_id
-    else:
-        # 新用户需要创建文件夹
+
+    if user_id is None:
+        log.error('The user_id is not valid.')
+        return
+
+    # 如果check_download=true，则不再下载，如果是补充下载要设为false
+    if check_download and is_download_user(user_id):
+        log.warn('The user hase been download. user_id: {}'.format(user_id))
+        return
+
+    if save_dir is None:
+        # 未给定用户文件夹，则新建一个
         save_dir = os.path.join(r'.\result\by-user', str(user_id))
-    download_by_user_id(save_dir, user_id, skip_download=False, skip_max_page_count=10, split_r_18=False)
+    download_by_user_id(save_dir, user_id, skip_download=False, skip_max_page_count=10, split_r_18=False, **kwargs)
+
+
+def refresh_collect_user(collect_user_dir: str):
+    illust_files = os.listdir(collect_user_dir)
+    for illust_file in illust_files:
+        # 获取目录或者文件的路径
+        if not os.path.isdir(os.path.join(collect_user_dir, illust_file)):
+            log.info('The file is not dir: {}'.format(illust_file))
+            continue
+        log.info('--> begin refresh use dir: {}'.format(illust_file))
+        download_task_by_user_id(save_dir=os.path.join(collect_user_dir, illust_file), check_download=False)
+        log.info('--> end refresh use dir: {}'.format(illust_file))
 
 
 if __name__ == '__main__':
     # download_by_pool()
-    download_top()
+    # download_top()
     # tag = 'プリコネ'
     # download_by_tag(os.path.join(r'.\result\by-tag', tag), tag)
     # download_by_illustration_id(r'.\result\illust', illustration_id=43302392, skip_ignore=False, skip_download=False)
-    # download_task_by_user_id(save_dir=r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\favorite\立绘-无场景\395595-cadillac-清爽-白色背景-少女')
+    refresh_collect_user(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\collect-user')
+    # download_task_by_user_id(save_dir=r'result\collect-user\3036679-甘城なつき-猫羽雫-蓝发猫耳萝莉', check_download=False)
     # download_task_by_user_id(illust_id=74853306)
     # download_task_by_user_id(user_id=946272, check_download=True)
 
