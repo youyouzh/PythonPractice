@@ -19,3 +19,10 @@ create table grammar
 	updated_at timestamp default current_timestamp not null,
 	constraint table_name_pk primary key (id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 comment '日语语法';
+
+create table word (
+    id bigint auto_increment,
+    name varchar(128) not null comment '单词',
+    `language` varchar(16) not null comment '语言： jp, zh, eng',
+
+)
