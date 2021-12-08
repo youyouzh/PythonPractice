@@ -18,3 +18,7 @@ matplotlib
 opencv-python
 scikit-image
 scikit-learn
+
+
+# AES DES decode for windows,
+pycryptodome
