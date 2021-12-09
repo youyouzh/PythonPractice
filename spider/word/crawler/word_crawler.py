@@ -43,8 +43,10 @@ def parse_and_save_jiemo_grammar_json(file_path: str):
 
 def query_hujiang_word(word: str, from_lang='cn', to_lang='jp', detail=False) -> dict:
     api_url = 'http://dict.hjapi.com/v10/{}/{}/{}'.format('dict' if detail else 'quick', from_lang, to_lang)
-    sign_str = 'FromLang={}&ToLang={}&Word={}&Word_Ext=3be65a6f99e98524e21e5dd8f85e2a9b'\
-        .format(from_lang, to_lang, word).encode(encoding='UTF-8')
+    word_ext = ''
+    app_secret = '3be65a6f99e98524e21e5dd8f85e2a9b'
+    sign_str = 'FromLang={}&ToLang={}&Word={}&Word_Ext={}{}'\
+        .format(from_lang, to_lang, word, word_ext, app_secret).encode(encoding='UTF-8')
     response = requests.post(
         api_url,
         data={
@@ -70,23 +72,68 @@ def query_hujiang_word(word: str, from_lang='cn', to_lang='jp', detail=False) ->
 
 
 def hujiang_des_cbc_decrypt(encode_data):
+    """
+    沪江小D单词详情查询接口返回的 data 是加密的，需要解密，AES_CBC解密
+    :param encode_data: 加密数据
+    :return: 解密后的json数据
+    """
     key = 'ceh[Een,3d3o9neg}fH+Jx4XiA0,D1cT'.encode('UTF-8')
     iv = 'K+\\~d4,Ir)b$=paf'.encode('UTF-8')
     cipher = AES.new(key, AES.MODE_CBC, iv)
-    decode_data = base64.decodebytes(encode_data.encode('UTF-8'))
 
+    # 解密之前还需要 base64解码
+    decode_data = base64.decodebytes(encode_data.encode('UTF-8'))
     decode_data = cipher.decrypt(decode_data)
+
+    # 注意需要去掉尾部的填充字符，复杂解压失败
     decode_data = decode_data[:-decode_data[-1]]
     decode_data = gzip.decompress(decode_data)
     decode_data = json.loads(decode_data.decode('UTF-8'))
     return decode_data
 
 
+def generate_zip_file_password(version: int) -> str:
+    """
+    沪江下载的词书压缩文件是有密码的，密码通过版本号计算得到
+    :param version: 词书压缩包版本号
+    :return: 密码
+    """
+    version = 2110131156
+    version = str(version).encode('UTF-8')
+    not_md5 = []
+    for byte in version:
+        not_md5.append(byte ^ 0xFF)
+    not_md5 = bytes(not_md5)
+    password = base64.standard_b64encode(not_md5)
+    print(password)
+    return password.decode("UTF-8")
+
+
+def decode_book_field(encode_content: str) -> str:
+    """ShoppingDetailsBiz
+    沪江词汇解压缩后，其中的内容也是加密的，需要解密
+    :param encode_content: 加密文本
+    :return: 解密后的文本
+    """
+    encode_content = 'HHxTHHxiHHxDHHx3HH1tGWRHHH5wHH5gHH1+HH5UpBx8eBx8Qxx9QKIcfW0WZHkcfX4cfXQcf30='
+    encode_content = encode_content.encode('UTF-8')
+    decode_content = base64.standard_b64decode(encode_content)
+    result = []
+    for byte in decode_content:
+        result.append(byte ^ 0xFF)
+    result = bytes(result)
+    print(result.decode('UTF-8'))
+    return result.decode('UTF-8')
+
+
 if __name__ == '__main__':
     # grammar_json_file_path = r'./result/grammar-n5.json'
     # parse_and_save_jiemo_grammar_json(grammar_json_file_path)
     # query_hujiang_word("上")
-    word = '外す'
-    result = query_hujiang_word(word, 'jp', 'cn', True)
-    u_file.cache_json(result, r'result/{}.json'.format(word))
-    print(result)
+    # generate_zip_file_password('')
+    # decode_book_field('HHxTHHxiHHxDHHx3HH1tGWRHHH5wHH5gHH1+HH5UpBx8eBx8Qxx9QKIcfW0WZHkcfX4cfXQcf30=')
+    hujiang_des_cbc_decrypt('')
+    # word = '外す'
+    # result = query_hujiang_word(word, 'jp', 'cn', True)
+    # u_file.cache_json(result, r'result/{}.json'.format(word))
+    # print(result)
