@@ -95,10 +95,10 @@ def hujiang_des_cbc_decrypt(encode_data):
 def generate_zip_file_password(version: int) -> str:
     """
     沪江下载的词书压缩文件是有密码的，密码通过版本号计算得到
+    test version: 2110131156  => zc7Oz87Mzs7KyQ==
     :param version: 词书压缩包版本号
     :return: 密码
     """
-    version = 2110131156
     version = str(version).encode('UTF-8')
     not_md5 = []
     for byte in version:
@@ -112,10 +112,10 @@ def generate_zip_file_password(version: int) -> str:
 def decode_book_field(encode_content: str) -> str:
     """ShoppingDetailsBiz
     沪江词汇解压缩后，其中的内容也是加密的，需要解密
+    test str: 'HHxTHHxiHHxDHHx3HH1tGWRHHH5wHH5gHH1+HH5UpBx8eBx8Qxx9QKIcfW0WZHkcfX4cfXQcf30='
     :param encode_content: 加密文本
     :return: 解密后的文本
     """
-    encode_content = 'HHxTHHxiHHxDHHx3HH1tGWRHHH5wHH5gHH1+HH5UpBx8eBx8Qxx9QKIcfW0WZHkcfX4cfXQcf30='
     encode_content = encode_content.encode('UTF-8')
     decode_content = base64.standard_b64decode(encode_content)
     result = []
@@ -132,8 +132,8 @@ if __name__ == '__main__':
     # query_hujiang_word("上")
     # generate_zip_file_password('')
     # decode_book_field('HHxTHHxiHHxDHHx3HH1tGWRHHH5wHH5gHH1+HH5UpBx8eBx8Qxx9QKIcfW0WZHkcfX4cfXQcf30=')
-    hujiang_des_cbc_decrypt('')
-    # word = '外す'
-    # result = query_hujiang_word(word, 'jp', 'cn', True)
-    # u_file.cache_json(result, r'result/{}.json'.format(word))
+    # generate_zip_file_password(1)
+    word = '外す'
+    result = query_hujiang_word(word, 'jp', 'cn', True)
+    u_file.cache_json(result, r'result/{}.json'.format(word))
     # print(result)

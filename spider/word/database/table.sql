@@ -24,5 +24,9 @@ create table word (
     id bigint auto_increment,
     name varchar(128) not null comment '单词',
     `language` varchar(16) not null comment '语言： jp, zh, eng',
-
+    kana varchar(64) not null comment '',
+    roma varchar(64) not null comment '',
+    accent varchar(64) not null comment '音标',
+    level varchar(8) comment '等级',
+    pos varchar(64) not null comment '词性'
 )
