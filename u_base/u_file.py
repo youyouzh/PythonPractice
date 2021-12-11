@@ -66,14 +66,21 @@ def get_file_name_from_url(url):
     return urllib.parse.unquote(file_name)
 
 
-def covert_url_to_filename(url):
+def covert_url_to_filename(url, with_domain=True, with_path=True):
     """
     将url转化为文件名，一帮用于缓存文件生成
+    :param with_domain: 文件名加上域名
+    :param with_path: 文件名加上请求路径
     :param url: url
     :return: filename
     """
     parse_result = urllib.parse.urlsplit(url)
-    file_name = parse_result.netloc + parse_result.path + parse_result.query
+    file_name = ''
+    if with_domain:
+        file_name += parse_result.netloc
+    if with_path:
+        file_name += parse_result.path
+    file_name += parse_result.query
     file_name = convert_windows_path(file_name)
     return file_name
 
@@ -176,10 +183,10 @@ def get_json(url, params=None, headers=None, **kwargs) -> dict:
     if headers is not None:
         default_headers.update(headers)
     try:
-        response = requests.get(url, params=params, headers=default_headers, **kwargs)
+        response = requests.get(url, params=params, headers=default_headers, verify=False, **kwargs)
     except Exception as e:
         log.warn('request error and try again. {}'.format(e))
-        response = requests.get(url, params=params, headers=default_headers, **kwargs)
+        response = requests.get(url, params=params, headers=default_headers, verify=False, **kwargs)
     return json.loads(response.text)
 
 
@@ -234,13 +241,14 @@ def write_content(file_path, content) -> str:
     return file_path
 
 
-def download_file(url, filename, path=os.path.curdir, replace=False, **kwargs):
+def download_file(url, filename, path=os.path.curdir, replace=False, with_progress=False, **kwargs):
     """
     download file from url
     :param url: image_url
     :param path: save directory path
     :param filename: image name
     :param replace: replace the same name file.
+    :param with_progress: with progress when download file.
     :return:
     """
     if not filename:
@@ -263,8 +271,16 @@ def download_file(url, filename, path=os.path.curdir, replace=False, **kwargs):
     log.info('begin download file from url: {}, save filename: {}'.format(url, filename))
     try:
         response = requests.get(url, stream=True, headers=COMMON_HEADERS, **kwargs)
-        with open(file_path, 'wb') as out_file:
-            out_file.write(response.content)
+        if with_progress:
+            # 带进度打印日志，控制台可以使用 tqdm 包实现
+            with open(file_path, 'ab') as out_file:
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        out_file.write(chunk)
+                        log.info('download 1034 success.')
+        else:
+            with open(file_path, 'wb') as out_file:
+                out_file.write(response.content)
         del response
     except Exception as e:
         log.error('download file failed. {}'.format(e))
@@ -390,6 +406,7 @@ def load_json_from_file(json_file) -> dict:
     if os.path.isfile(json_file):
         json_data = json.load(file_handle)
     file_handle.close()
+    log.info('load json from file success. file: {}'.format(json_file))
     return json_data
 
 
@@ -435,8 +452,20 @@ def rget(data, keys, default=None):
     except KeyError:
         return default
     except TypeError:
-        log.error('The data is not dict.')
+        log.warn('The data is not dict: {}'.format(data))
         return None
     if not keys:
         return elem
     return rget(elem, keys, default)
+
+
+def get_path(file_name: str, with_file_name=True) -> str:
+    """
+    从完整文件名称获取文件夹
+    :param file_name: 文件名称（绝对文件路径）
+    :param with_file_name: 是否包含文件名
+    :return: 文件路径
+    """
+    path, file = os.path.split(file_name)
+    filename, suffix = os.path.splitext(file)
+    return path + filename if with_file_name else ''
