@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import requests
 import hashlib
 import gzip
@@ -12,13 +13,16 @@ from u_base import u_file
 from u_base.u_file import m_get
 
 HEADERS = {
-    'User-Agent': 'HJApp%20v3/android/SM-G9550/4c1639cf6f4b2ecb0068ac4/7.1.2/com.hjwordgames/6.15.0.582/qq/'
+    'User-Agent': 'HJApp%201.0/android/SM-G9550/4c1639cf6f4b2ecb0068ac4/7.1.2/com.hujiang.dict/3.6.1.279/miui/ '
+                  'deviceId/4c1639cf6f4b2ecb0068ac4',
+    # 'X-B3-TraceId': '4547fdb6b51fabe4',
+    # 'Device-Id': '4c1639cf6f4b2ecb0068ac4',
+    # 'X-B3-Sampled': '1',
+    # 'X-B3-SpanId': '4547fdb6b51fabe4',
+    # 'TracetNo': 'NULuLUGaNcf='
 }
-AUTH_HEADERS = {
-    'User-Agent': 'HJApp%20v3/android/SM-G9550/4c1639cf6f4b2ecb0068ac4/7.1.2/com.hjwordgames/6.15.0.582/qq/',
-    'Access-Token': '0009194865.b36c6f34d9d899b424c1516f71d1dc4a',
-    'Device-Id': '4c1639cf6f4b2ecb0068ac4'
-}
+AUTH_HEADERS = HEADERS.copy()
+AUTH_HEADERS['Access-Token'] = '0009194865.b36c6f34d9d899b424c1516f71d1dc4a'
 
 
 def get_word_books(category: str = '日语') -> list:
@@ -70,10 +74,11 @@ def get_word_book_resources(word_book_id: int, word_book_name: str) -> dict:
         # 需要添加默认词书才可以查询数据
         log.info('The word book is not default. word_book_id: {}'.format(word_book_id))
         add_default_url = 'https://cichang.hjapi.com/v3/user/me/book/{}/default'.format(word_book_id)
+        delete_default_url = 'https://cichang.hjapi.com/v3/user/me/book/{}'.format(word_book_id)
         requests.put(add_default_url, headers=AUTH_HEADERS, verify=False)
         response = u_file.get_json(url, headers=AUTH_HEADERS)
         word_book_resources = m_get(response, 'data')
-        requests.delete(add_default_url, headers=AUTH_HEADERS, verify=False)
+        requests.delete(delete_default_url, headers=AUTH_HEADERS, verify=False)
         log.info('add word book to default then delete. word_book_id: {}'.format(word_book_id))
 
     if word_book_resources is None:
@@ -274,10 +279,10 @@ def decode_field(encode_content: str) -> str:
     return decode_str
 
 
-def get_word_detail(word: str, from_lang='cn', to_lang='jp', detail=False) -> dict:
+def get_word_detail(word: str, from_lang='jp', to_lang='cn', detail=False, retry_times=5) -> dict:
     api_url = 'http://dict.hjapi.com/v10/{}/{}/{}'.format('dict' if detail else 'quick', from_lang, to_lang)
     word_ext = ''
-    cache_file = r'result/word/{}.json'.format(word)
+    cache_file = r'result/word-{}-{}/{}.json'.format(from_lang, to_lang, word)
     u_file.ready_dir(cache_file)
     if os.path.isfile(cache_file):
         log.info('load word detail from cache file: {}'.format(cache_file))
@@ -285,17 +290,16 @@ def get_word_detail(word: str, from_lang='cn', to_lang='jp', detail=False) -> di
     app_secret = '3be65a6f99e98524e21e5dd8f85e2a9b'
     sign_str = 'FromLang={}&ToLang={}&Word={}&Word_Ext={}{}' \
         .format(from_lang, to_lang, word, word_ext, app_secret).encode(encoding='UTF-8')
+    headers = AUTH_HEADERS.copy()
+    headers['hujiang-appkey'] = 'b458dd683e237054f9a7302235dee675'
+    headers['hujiang-appsign'] = hashlib.md5(sign_str).hexdigest().upper()
     response = requests.post(
         api_url,
         data={
             "word": word,
             "word_ext": None
         },
-        headers={
-            "User-Agent": u_file.COMMON_USER_AGENT,
-            "hujiang-appkey": "b458dd683e237054f9a7302235dee675",
-            "hujiang-appsign": hashlib.md5(sign_str).hexdigest()
-        },
+        headers=headers,
         verify=False
     )
     log.info('end get info from web url: ' + api_url)
@@ -306,7 +310,13 @@ def get_word_detail(word: str, from_lang='cn', to_lang='jp', detail=False) -> di
     query_result = json.loads(response.text)
     if 'data' not in query_result or query_result.get('status', -1) != 0:
         log.error('The response is not valid: {}'.format(response.text))
+        if retry_times >= 0 and 'Abnormal request' == query_result['message']:
+            sleep_seconds = 60 * (5 - retry_times)
+            log.info('retry query and sleep. times: {}, sleep seconds: {}'.format(retry_times, sleep_seconds))
+            time.sleep(sleep_seconds)
+            return get_word_detail(word, from_lang, to_lang, detail, retry_times - 1)
         return {}
+    time.sleep(0.5)
     word_result = aes_cbc_decrypt_word_data(query_result['data']) if detail else query_result['data']
     u_file.cache_json(word_result, cache_file)
     return word_result
@@ -334,11 +344,12 @@ def aes_cbc_decrypt_word_data(encode_data):
     return decode_data
 
 
-def download_word_books(category: str = '日语', size: int = 50, query_word=False):
+def download_word_books(category: str = '日语', size: int = 60, word_book_id=None, query_word=False):
     """
     下载词书数据，包括词书题目等
     :param category: 分类
     :param size: 下载的词书数量，按照添加用户倒序排序
+    :param word_book_id: 指定下载单词书id
     :param query_word: 是否查询单词详情
     :return:
     """
@@ -346,16 +357,21 @@ def download_word_books(category: str = '日语', size: int = 50, query_word=Fal
     word_books = get_word_books(category)
     index = 0
     for word_book in word_books:
+        if word_book_id is not None and word_book['id'] != word_book_id:
+            continue
         if index >= size:
             break
         log.info('--->begin crawl word book id: {}, name: {}'.format(word_book['id'], word_book['name']))
         word_book_resource = get_word_book_resources(word_book['id'], word_book['name'])
         word_book_item_infos = download_decrypt_word_book_resource(word_book, word_book_resource)
         if query_word:
+            queried_count = 1
             for word_book_item_info in word_book_item_infos:
                 word = word_book_item_info['Word']
                 get_word_detail(word, detail=True)
-                log.info('get word detail success. word: {}'.format(word))
+                log.info('get word detail success. word: {}, progress:[{}/{}]'
+                         .format(word, queried_count, len(word_book_item_infos)))
+                queried_count += 1
         log.info('--->end crawl word book id: {}, name: {}'.format(word_book['id'], word_book['name']))
         index += 1
     log.info('--->end download word books. category: {}, size: {}'.format(category, size))
@@ -363,14 +379,6 @@ def download_word_books(category: str = '日语', size: int = 50, query_word=Fal
 
 if __name__ == '__main__':
     log.info('begin process')
-    download_word_books('日语', query_word=True)
+    download_word_books('日语', query_word=True, word_book_id=13216)
+    # get_word_detail('詰め', detail=True)
     # grammar_json_file_path = r'./result/grammar-n5.json'
-    # parse_and_save_jiemo_grammar_json(grammar_json_file_path)
-    # query_hujiang_word("上")
-    # generate_zip_file_password('')
-    # decode_book_field('HHxTHHxiHHxDHHx3HH1tGWRHHH5wHH5gHH1+HH5UpBx8eBx8Qxx9QKIcfW0WZHkcfX4cfXQcf30=')
-    # generate_zip_file_password(1)
-    # word = '外す'
-    # result = query_hujiang_word(word, 'jp', 'cn', True)
-    # u_file.cache_json(result, r'result/{}.json'.format(word))
-    # print(result)
