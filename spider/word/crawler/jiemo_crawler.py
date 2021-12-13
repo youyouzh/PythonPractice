@@ -7,6 +7,53 @@ from u_base import u_file
 from u_base.u_file import m_get
 from spider.word.database.db import Grammar, save_grammar
 
+COMMON_PARAMS = {
+    "userId": "2669799",
+    "timeStamp": "0",
+    "G": {
+        "at": 12,
+        "av": 1900,
+        "dt": 1,
+        "deviceInfo": {
+            "appVersion": "1.9.0",
+            "deviceType": "Android",
+            "deviceVersion": "5.1.1",
+            "mobileBrand": "HUAWEI",
+            "mobileModel": "VOG-AL00",
+            "screenHeight": 1280,
+            "screenWidth": 720,
+            "umengChannel": "",
+            "versonCode": "1900"
+        },
+        "deviceId": "47961223-e23c-49d3-98af-3b475c931a62",
+        "deviceToken": "AgMZyfgg7LKerXMC5ygeKkKCieYrMLBQiOwLoR2K15G-",
+        "umengChannel": "store_qqsj",
+        "ddjm": "WdK3VCt58n40oCjIfm8u0kaMcnbTcHfYDoIv3gZiFiDAaMdgJdw2WondIPg3tTKWGyXOFKfRkA-r8Uc9dmtSOZavNix"
+                "2swkorhapdD__yUEpH_wCAMqpoCEnjgRdER6badYzEamKn__kpywOpQnYD_sauBfsdYTdHu4ulQSUUC4\u003d"
+    }
+}
+
+
+def post_special(url, param: dict = None):
+    """
+    发送 post 请求，主要是参数中的ddjm等参数，可能用于防火墙拦截
+    :param url: url
+    :param param: param dict
+    :return: 返回json中的data域
+    """
+    param_json = COMMON_PARAMS.copy()
+    param_json.update(param if param is not None else {})
+    response = requests.post(url, json=param_json, verify=False)
+    log.info('request success. url: {}'.format(url))
+    if response.status_code != 200:
+        log.info('request failed, status code is not 200. url: {}, code: {}'.format(url, response.status_code))
+        return None
+    result = json.loads(response.text)
+    if m_get(result, 'result') != 0 or m_get(result, 'data') is None:
+        log.error('request data is not valid. response: {}'.format(response.text))
+        return None
+    return m_get(result, 'data')
+
 
 def crawler_grammar():
     """
@@ -22,43 +69,51 @@ def crawler_grammar():
         if os.path.isfile(grammar_cache_file):
             log.info('The grammar is exist. file: {}'.format(grammar_cache_file))
             continue
-        param_json = {
-            "userId": "2669799",
-            "level": level,
-            "timeStamp": "0",
-            "G": {
-                "at": 12,
-                "av": 1900,
-                "dt": 1,
-                "deviceInfo": {
-                    "appVersion": "1.9.0",
-                    "deviceType": "Android",
-                    "deviceVersion": "5.1.1",
-                    "mobileBrand": "HUAWEI",
-                    "mobileModel": "VOG-AL00",
-                    "screenHeight": 1280,
-                    "screenWidth": 720,
-                    "umengChannel": "",
-                    "versonCode": "1900"
-                },
-                "deviceId": "47961223-e23c-49d3-98af-3b475c931a62",
-                "deviceToken": "AgMZyfgg7LKerXMC5ygeKkKCieYrMLBQiOwLoR2K15G-",
-                "umengChannel": "store_qqsj",
-                "ddjm": "WdK3VCt58n40oCjIfm8u0kaMcnbTcHfYDoIv3gZiFiDAaMdgJdw2WondIPg3tTKWGyXOFKfRkA-r8Uc9dmtSOZavNix"
-                        "2swkorhapdD__yUEpH_wCAMqpoCEnjgRdER6badYzEamKn__kpywOpQnYD_sauBfsdYTdHu4ulQSUUC4\u003d"
-            }
-        }
-        response = requests.post(grammar_url, json=param_json, verify=False)
-        log.info('request grammar success. content str size: {}'.format(len(response.text)))
-        if response.status_code != 200:
-            log.error('request grammar failed. error: {}'.format(response.text))
+        param_json = COMMON_PARAMS.copy()
+        param_json['level'] = level
+        data = post_special(grammar_url, {'level': level})
+        if data is None:
+            log.info('request grammar failed. level: {}'.format(level))
             continue
-        result = json.loads(response.text)
-        if m_get(result, 'result') != 0 or m_get(result, 'data') is None:
-            log.error('request grammar error. level: {}'.format(level))
-            continue
-        u_file.cache_json(m_get(result, 'data'), grammar_cache_file)
+        u_file.cache_json(data, grammar_cache_file)
         log.info('--->end download grammar: {}'.format(level))
+
+
+def crawler_special_knowledge():
+    # 词汇变形公式
+    formula_url = 'https://ns-api.jiemo.net/v2/book/formulaDetail'
+    cache_file = r'result\jiemo-grammar\formula.json'
+    if os.path.isfile(cache_file):
+        log.info('The formula json is exist: {}'.format(cache_file))
+    else:
+        data = post_special(formula_url)
+        if data is None:
+            log.info('request formula failed')
+        else:
+            log.info('request formula data success')
+            u_file.cache_json(data, cache_file)
+
+    # N1考试宝典获取
+    exam_book_url = 'https://ns-api.jiemo.net/v2/book/valuableBookDetail'
+    cache_file = r'result\jiemo-grammar\exam-book-N1.json'
+    if not os.path.isfile(cache_file):
+        data = post_special(exam_book_url, {'level': 'N1'})
+        if data is None:
+            log.info('request exam book N1 failed.')
+        else:
+            log.info('request exam book N1 success.')
+            u_file.cache_json(data, cache_file)
+
+    # N2考试宝典获取
+    exam_book_url = 'https://ns-api.jiemo.net/v2/book/valuableBookDetail'
+    cache_file = r'result\jiemo-grammar\exam-book-N2.json'
+    if not os.path.isfile(cache_file):
+        data = post_special(exam_book_url, {'level': 'N2'})
+        if data is None:
+            log.info('request exam book N2 failed.')
+        else:
+            log.info('request exam book N2 success.')
+            u_file.cache_json(data, cache_file)
 
 
 def parse_and_save_grammar_json(file_path: str):
@@ -147,4 +202,4 @@ def crawler_exam_questions():
 
 if __name__ == '__main__':
     log.info('begin process')
-    crawler_exam_questions()
+    crawler_special_knowledge()
