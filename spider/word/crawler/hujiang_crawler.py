@@ -317,7 +317,7 @@ def get_word_detail(word: str, from_lang='jp', to_lang='cn', detail=False, retry
         headers=headers,
         verify=False
     )
-    log.info('end get info from web url: ' + api_url)
+    log.info('end get info from web url: {}, word: {}'.format(api_url, word))
     if not (400 <= response.status_code < 500):
         response.raise_for_status()
     if response.text is None or response.text == '':
@@ -383,9 +383,7 @@ def download_word_books(category: str = '日语', size: int = 60, word_book_id=N
         # 将词书记录到数据库
         db_word_book = session.query(WordBook).filter(WordBook.source == '沪江开心词场')\
             .filter(WordBook.source_id == word_book['id']).first()
-        if db_word_book.word_queried:
-            log.info('All words are queried in the book. id: {}, name: {}'.format(word_book['id'], word_book['name']))
-            continue
+
         if db_word_book is None:
             log.info('create db word book. id: {}, name: {}'.format(word_book['id'], word_book['name']))
             db_word_book = WordBook(name=word_book['name'], source='沪江开心词场', source_id=word_book['id'],
@@ -396,8 +394,12 @@ def download_word_books(category: str = '日语', size: int = 60, word_book_id=N
                                     word_count=word_book['wordCount'], learning_user_count=word_book['userCount'],
                                     finish_user_count=word_book['finishedUserCount'],
                                     word_queried=0)
-            db_word_book = session.merge(db_word_book)
+            session.merge(db_word_book)
             session.commit()
+        elif db_word_book.word_queried:
+            log.info(
+                'All words are queried in the book. id: {}, name: {}'.format(word_book['id'], word_book['name']))
+            continue
 
         word_book_resource = get_word_book_resources(word_book['id'], word_book['name'])
         word_book_item_infos = download_decrypt_word_book_resource(word_book, word_book_resource)
@@ -409,9 +411,9 @@ def download_word_books(category: str = '日语', size: int = 60, word_book_id=N
                 log.info('get word detail success. word: {}, progress:[{}/{}]'
                          .format(word, queried_count, len(word_book_item_infos)))
                 queried_count += 1
-        # 更新词书词汇详情标识
-        db_word_book.word_queried = 1
-        session.commit()
+            # 更新词书词汇详情标识
+            db_word_book.word_queried = 1
+            session.commit()
         log.info('--->end crawl word book id: {}, name: {}'.format(word_book['id'], word_book['name']))
         index += 1
     log.info('--->end download word books. category: {}, size: {}'.format(category, size))
