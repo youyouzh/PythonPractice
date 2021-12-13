@@ -11,6 +11,8 @@ from Crypto.Cipher import AES
 from u_base import u_log as log
 from u_base import u_file
 from u_base.u_file import m_get
+from spider.word.database.db import session, WordBook, Grammar
+
 
 HEADERS = {
     'User-Agent': 'HJApp%201.0/android/SM-G9550/4c1639cf6f4b2ecb0068ac4/7.1.2/com.hujiang.dict/3.6.1.279/miui/ '
@@ -280,13 +282,26 @@ def decode_field(encode_content: str) -> str:
 
 
 def get_word_detail(word: str, from_lang='jp', to_lang='cn', detail=False, retry_times=5) -> dict:
+    """
+    查询单词详细释义
+    :param word: 单词
+    :param from_lang: 源语言，日语：jp，英文：cn
+    :param to_lang: 目标语言
+    :param detail: 是否查询详情，默认为false，调用quick接口，查询信息不够详细
+    :param retry_times: 重试词书，用于触发接口限制后重试
+    :return: 单词释义详情
+    """
     api_url = 'http://dict.hjapi.com/v10/{}/{}/{}'.format('dict' if detail else 'quick', from_lang, to_lang)
     word_ext = ''
+
+    # 优先从cache中加载
     cache_file = r'result/word-{}-{}/{}.json'.format(from_lang, to_lang, word)
     u_file.ready_dir(cache_file)
     if os.path.isfile(cache_file):
         log.info('load word detail from cache file: {}'.format(cache_file))
         return u_file.load_json_from_file(cache_file)
+
+    # 构造签名参数
     app_secret = '3be65a6f99e98524e21e5dd8f85e2a9b'
     sign_str = 'FromLang={}&ToLang={}&Word={}&Word_Ext={}{}' \
         .format(from_lang, to_lang, word, word_ext, app_secret).encode(encoding='UTF-8')
@@ -317,6 +332,8 @@ def get_word_detail(word: str, from_lang='jp', to_lang='cn', detail=False, retry
             return get_word_detail(word, from_lang, to_lang, detail, retry_times - 1)
         return {}
     time.sleep(0.5)
+
+    # 详情接口返回值需要解密
     word_result = aes_cbc_decrypt_word_data(query_result['data']) if detail else query_result['data']
     u_file.cache_json(word_result, cache_file)
     return word_result
@@ -362,6 +379,26 @@ def download_word_books(category: str = '日语', size: int = 60, word_book_id=N
         if index >= size:
             break
         log.info('--->begin crawl word book id: {}, name: {}'.format(word_book['id'], word_book['name']))
+
+        # 将词书记录到数据库
+        db_word_book = session.query(WordBook).filter(WordBook.source == '沪江开心词场')\
+            .filter(WordBook.source_id == word_book['id']).first()
+        if db_word_book.word_queried:
+            log.info('All words are queried in the book. id: {}, name: {}'.format(word_book['id'], word_book['name']))
+            continue
+        if db_word_book is None:
+            log.info('create db word book. id: {}, name: {}'.format(word_book['id'], word_book['name']))
+            db_word_book = WordBook(name=word_book['name'], source='沪江开心词场', source_id=word_book['id'],
+                                    level='',
+                                    introduction=word_book['introduction'],
+                                    cover_image_url=word_book['coverImageUrl'],
+                                    from_lang=word_book['fromLang'], to_lang=word_book['toLang'],
+                                    word_count=word_book['wordCount'], learning_user_count=word_book['userCount'],
+                                    finish_user_count=word_book['finishedUserCount'],
+                                    word_queried=0)
+            db_word_book = session.merge(db_word_book)
+            session.commit()
+
         word_book_resource = get_word_book_resources(word_book['id'], word_book['name'])
         word_book_item_infos = download_decrypt_word_book_resource(word_book, word_book_resource)
         if query_word:
@@ -372,6 +409,9 @@ def download_word_books(category: str = '日语', size: int = 60, word_book_id=N
                 log.info('get word detail success. word: {}, progress:[{}/{}]'
                          .format(word, queried_count, len(word_book_item_infos)))
                 queried_count += 1
+        # 更新词书词汇详情标识
+        db_word_book.word_queried = 1
+        session.commit()
         log.info('--->end crawl word book id: {}, name: {}'.format(word_book['id'], word_book['name']))
         index += 1
     log.info('--->end download word books. category: {}, size: {}'.format(category, size))
@@ -379,6 +419,7 @@ def download_word_books(category: str = '日语', size: int = 60, word_book_id=N
 
 if __name__ == '__main__':
     log.info('begin process')
-    download_word_books('日语', query_word=True, word_book_id=13216)
+    # download_word_books('日语,能力考N4N5', query_word=True)
+    download_word_books('日语', query_word=True)
     # get_word_detail('詰め', detail=True)
     # grammar_json_file_path = r'./result/grammar-n5.json'
