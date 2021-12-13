@@ -8,6 +8,7 @@ import warnings
 from sqlalchemy.orm import sessionmaker
 
 import u_base.u_log as log
+from spider.pixiv.arrange.file_util import get_illust_id
 from spider.pixiv.pixiv_api import PixivError
 from .entity import Illustration, IllustrationTag, IllustrationImage, PixivUser
 
@@ -168,7 +169,7 @@ def is_special_illust_ids(illust_path: str = None, **kwargs) -> bool:
     cache_illust_ids_path = os.path.join(cache_illust_ids_path, r'.\cache\\' + str(user_id) + '-illust-ids.json')
     if not os.path.isfile(cache_illust_ids_path):
         # 某个用户的illust_id
-        illust_ids = session.query(Illustration.id).filter(Illustration.user_id == user_id)\
+        illust_ids = session.query(Illustration).filter(Illustration.user_id == user_id)\
             .order_by(Illustration.total_bookmarks.desc()).all()
         illust_ids = [x.id for x in illust_ids]
         log.info('query user_id: {}, illust_ids_size: {}'.format(user_id, len(illust_ids)))
