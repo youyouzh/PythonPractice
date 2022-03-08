@@ -1,4 +1,5 @@
 import re
+import time
 from typing import List
 
 import shutil
@@ -20,11 +21,11 @@ _REQUESTS_KWARGS = {
 }
 
 
-def get_ts_ave_dir(m3u8_url: str):
+def get_ts_save_dir(m3u8_url: str):
     parse_url = urlparse(urljoin(m3u8_url, ''))
     url_path = os.path.dirname(parse_url.path)
     save_dir = os.path.join(r'result\ts', u_file.convert_windows_path(url_path))
-    u_file.ready_dir(save_dir)
+    u_file.ready_dir(save_dir, True)
     return save_dir
 
 
@@ -87,8 +88,11 @@ def extract_ts_urls(m3u8_url: str) -> List[str]:
 
     # extract full ts file urls
     response = u_file.get_content_with_cache(m3u8_url, cache_file, **_REQUESTS_KWARGS)
-    lines = response.split('\n')
-    ts_urls: List[str] = [urljoin(m3u8_url, line.rstrip()) for line in lines if line.rstrip().endswith('.ts')]
+    if response[0:1] == '[':
+        ts_urls = json.loads(response)
+    else:
+        lines = response.split('\n')
+        ts_urls: List[str] = [urljoin(m3u8_url, line.rstrip()) for line in lines if line.rstrip().endswith('.ts')]
     if len(ts_urls) == 0:
         log.error('extract ts urls failed.')
         return []
@@ -98,7 +102,7 @@ def extract_ts_urls(m3u8_url: str) -> List[str]:
 
 
 def download_ts_file(m3u8_url: str, ts_urls: List[str]):
-    save_dir = get_ts_ave_dir(m3u8_url)
+    save_dir = get_ts_save_dir(m3u8_url)
     index = 1
     for ts_url in ts_urls:
         file_name = u_file.get_file_name_from_url(ts_url)
@@ -108,8 +112,9 @@ def download_ts_file(m3u8_url: str, ts_urls: List[str]):
 
 
 def download_ts_file_with_pool(m3u8_url: str, ts_urls: List[str]):
+    save_dir = get_ts_save_dir(m3u8_url)
+    log.info('download ts file with pool.')
     pool = ThreadPoolExecutor(10)
-    save_dir = get_ts_ave_dir(m3u8_url)
     tasks = []
     for ts_url in ts_urls:
         file_name = u_file.get_file_name_from_url(ts_url)
@@ -125,7 +130,7 @@ def merge_ts_file(m3u8_url: str, video_name: str, decrypt_function=None):
     u_file.ready_dir(merge_file_path)
     merge_file_handle = open(merge_file_path, 'wb')
 
-    ts_dir = get_ts_ave_dir(m3u8_url)
+    ts_dir = get_ts_save_dir(m3u8_url)
     for ts_filename in os.listdir(ts_dir):
         if not ts_filename.rstrip().endswith('.ts'):
             continue
