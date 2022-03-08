@@ -93,13 +93,14 @@ def get_abs_cache_path():
     return os.path.join(os.getcwd(), 'cache')
 
 
-def ready_dir(file_path: str):
+def ready_dir(file_path: str, is_dir=False):
     """
     准备相关文件夹，检查path所在文件夹是否存在，若不存在则创建
-    :param file_path: 文件路径，不能是文件夹路径
+    :param is_dir: 是否是文件夹
+    :param file_path: 文件路径，如果是文件夹路径则is_dir=True
     :return: None
     """
-    dir_path = os.path.dirname(file_path)
+    dir_path = file_path if is_dir else os.path.dirname(file_path)
     if not os.path.isdir(dir_path):
         log.info('the file path is not exist. create: {}'.format(dir_path))
         os.makedirs(dir_path)
