@@ -272,6 +272,9 @@ def download_file(url, filename, path=os.path.curdir, replace=False, with_progre
     log.info('begin download file from url: {}, save filename: {}'.format(url, filename))
     try:
         response = requests.get(url, stream=True, headers=COMMON_HEADERS, **kwargs)
+        if response.status_code != 200:
+            log.error('download file success. url: {}, code: {}'.format(url, response.status_code))
+            return False
         if with_progress:
             # 带进度打印日志，控制台可以使用 tqdm 包实现
             with open(file_path, 'ab') as out_file:
