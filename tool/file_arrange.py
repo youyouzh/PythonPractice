@@ -187,5 +187,42 @@ def generate_gitbook_summary(source_dir):
     print(summary_content)
 
 
+def remove_novel_ad():
+    """
+    移除掉小说中的广告语
+    :return:
+    """
+    file_path = r'G:\e-book\小说-文学\现代文学名著\秋-巴金.txt'
+    lines = u_file.read_file_as_list(file_path)
+    log.info('content length: {}'.format(len(lines)))
+
+
+def add_jpg_suffix():
+    """
+    淘宝导出的图片没有后秒，给文件名添加.jpg
+    :return:
+    """
+    root_path = r'G:\图片\淘宝-衣服'
+    file_paths = u_file.get_all_sub_files(root_path)
+    for file_path in file_paths:
+        if os.path.isfile(file_path):
+            if len(file_path.split('.')) < 2:
+                log.info('the file is not exist suffix. file_path: %s', file_path)
+                os.replace(file_path, file_path + '.jpg')
+
+
+def clear_log(root_path):
+    """
+    清理掉日志
+    :return:
+    """
+    file_paths = u_file.get_all_sub_files(root_path)
+    for file_path in file_paths:
+        if os.path.isdir(file_path) and '/log' in file_path:
+            log.info('clear file path: %s', file_path)
+            # os.remove(file_path)
+
+
 if __name__ == "__main__":
-    modify_picture_suffix(r'D:\WeiXin')
+    # modify_picture_suffix(r'D:\WeiXin')
+    add_jpg_suffix()
