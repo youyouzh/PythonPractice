@@ -149,6 +149,10 @@ class BasePixivAPI(object):
 
         # Write stream to file
         response = self.requests_call('GET', url, headers={'Referer': referer}, stream=True)
+        if response.status_code != 200:
+            print('---> the response status code is not 200. url: ' + url)
+            return
+
         with open(img_path, 'wb') as out_file:
             # shutil.copyfileobj(response.raw, out_file)
             out_file.write(response.content)
