@@ -124,9 +124,23 @@ def query_top_total_bookmarks(count=100000, min_id=91391283) -> list:
         .filter(Illustration.type == 'illust')\
         .filter(Illustration.id >= min_id)\
         .order_by(Illustration.total_bookmarks.desc()).limit(count).all()
-    result = [dict(zip(v.keys(), v)) for v in results]
-    json.dump(result, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    return result
+    results = [dict(zip(v.keys(), v)) for v in results]
+    json.dump(results, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    return results
+
+
+def query_by_user_id(user_id, min_total_bookmarks=5000) -> list:
+    cache_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), r"cache\user-{}-top-{}-illusts.json"
+                              .format(user_id, min_total_bookmarks))
+    if os.path.isfile(cache_file):
+        return json.load(open(cache_file, encoding='utf-8'))
+    results = session.query(Illustration)\
+        .filter(Illustration.user_id == user_id)\
+        .filter(Illustration.total_bookmarks >= min_total_bookmarks)\
+        .order_by(Illustration.total_bookmarks.desc()).all()
+    results = [dict(zip(v.keys(), v)) for v in results]
+    json.dump(results, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    return results
 
 
 # 更新插图的标签
