@@ -101,6 +101,9 @@ def ready_dir(file_path: str, is_dir=False):
     :return: None
     """
     dir_path = file_path if is_dir else os.path.dirname(file_path)
+    if not dir_path:
+        log.info('The dir path is empty.')
+        return
     if not os.path.isdir(dir_path):
         log.info('the file path is not exist. create: {}'.format(dir_path))
         os.makedirs(dir_path)
