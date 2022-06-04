@@ -134,13 +134,17 @@ def query_by_user_id(user_id, min_total_bookmarks=5000) -> list:
                               .format(user_id, min_total_bookmarks))
     if os.path.isfile(cache_file):
         return json.load(open(cache_file, encoding='utf-8'))
-    results = session.query(Illustration)\
+    results = session.query(Illustration.id, Illustration.user_id, Illustration.total_bookmarks)\
         .filter(Illustration.user_id == user_id)\
         .filter(Illustration.total_bookmarks >= min_total_bookmarks)\
         .order_by(Illustration.total_bookmarks.desc()).all()
     results = [dict(zip(v.keys(), v)) for v in results]
     json.dump(results, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     return results
+
+
+def get_illustration_by_id(illustration_id: int):
+    return session.query(Illustration).get(illustration_id)
 
 
 # 更新插图的标签
