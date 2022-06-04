@@ -389,7 +389,7 @@ def cache_json(json_data, cache_file=None) -> str:
     return cache_file
 
 
-def dump_json_to_file(json_file, json_data):
+def dump_json_to_file(json_file: str, json_data):
     """
     将json数据存入文件中
     :param json_file:
@@ -397,24 +397,20 @@ def dump_json_to_file(json_file, json_data):
     :return:
     """
     ready_dir(json_file)
-    file_handle = open(json_file, 'w', encoding='utf-8')
-    json.dump(json_data, file_handle, ensure_ascii=False, indent=4)
-    file_handle.close()
+    with open(json_file, 'w', encoding='utf-8') as file_handle:
+        log.info('dump json to file success. file: {}'.format(json_file))
+        json.dump(json_data, file_handle, ensure_ascii=False, indent=4)
 
 
-def load_json_from_file(json_file) -> dict:
+def load_json_from_file(json_file: str):
     """
     从文件中加载json数据
     :param json_file:
     :return:
     """
-    file_handle = open(json_file, encoding='utf-8')
-    json_data = None
-    if os.path.isfile(json_file):
-        json_data = json.load(file_handle)
-    file_handle.close()
-    log.info('load json from file success. file: {}'.format(json_file))
-    return json_data
+    with open(json_file, 'r', encoding='utf-8') as file_handle:
+        log.info('load json from file success. file: {}'.format(json_file))
+        return json.load(file_handle)
 
 
 def extract_init_json_data(html_content: str, pattern: re.Pattern) -> dict:
