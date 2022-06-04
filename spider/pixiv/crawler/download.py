@@ -7,8 +7,8 @@ import time
 import threadpool
 
 import u_base.u_log as log
-from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, query_top_total_bookmarks, \
-    is_download_user, update_user_tag
+from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, \
+    query_top_total_bookmarks, is_download_user, update_user_tag, query_by_user_id, get_pixiv_user
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivError
 from spider.pixiv.arrange.file_util import get_illust_id
 
@@ -152,14 +152,14 @@ def download_by_illustration_id(directory: str, illustration_id: int, **kwargs):
         if kwargs.get('skip_download') and illustration_image.process == 'DOWNLOADED':
             log.info('The illustration_image(id: {}) has been downloaded.'.format(illustration_id))
             continue
-        log.info('begin process illust_id: {}, image_url: {}'
-                 .format(illustration_image.illust_id, illustration_image.image_url_origin))
+        log.info('process illust_id: {}, total_bookmarks: {}, image_url: {}'
+                 .format(illustration_image.illust_id,illustration.total_bookmarks, illustration_image.image_url_origin))
         download_task(pixiv_api, directory, illustration_image=illustration_image)
         illustration_image.process = 'DOWNLOADED'
         session.merge(illustration_image)
         session.commit()
         log.info('end process illust_id: {}'.format(illustration_image.illust_id))
-    log.info('begin download illust by illustration_id: {}, illust image size: {}'
+    log.info('end download illust by illustration_id: {}, illust image size: {}'
              .format(illustration_id, len(illustration_images)))
 
 
@@ -173,10 +173,7 @@ def download_task_by_illust_ids(save_dir, illust_ids: list):
 # 下载某个用户的图片，基于本地数据库
 def download_by_user_id(save_directory, user_id: int, min_total_bookmarks=5000, **kwargs):
     log.info('begin download illust by user_id: {}'.format(user_id))
-    illustrations: [Illustration] = session.query(Illustration)\
-        .filter(Illustration.user_id == user_id)\
-        .filter(Illustration.total_bookmarks >= min_total_bookmarks)\
-        .order_by(Illustration.total_bookmarks.desc()).all()
+    illustrations: [Illustration] = query_by_user_id(user_id, min_total_bookmarks)
     if illustrations is None or len(illustrations) <= 0:
         log.warn('The illustrations is empty. user_id: {}'.format(user_id))
         return
@@ -242,7 +239,7 @@ def download_top(**kwargs):
         log.info('end download illust: {}'.format(top_illust))
 
 
-def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None, check_download=True, **kwargs):
+def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None, check_user_download=True, **kwargs):
     # 通过插画id查询对应的用户id
     if illust_id is not None:
         illust: Illustration = session.query(Illustration).get(illust_id)
@@ -260,13 +257,14 @@ def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None, check_
         return
 
     # 如果check_download=true，则不再下载，如果是补充下载要设为false
-    if check_download and is_download_user(user_id):
+    if check_user_download and is_download_user(user_id):
         log.warn('The user hase been download. user_id: {}'.format(user_id))
         return
 
     if save_dir is None:
         # 未给定用户文件夹，则新建一个
-        save_dir = os.path.join(r'.\result\by-user', str(user_id))
+        pixiv_user = get_pixiv_user(user_id)
+        save_dir = os.path.join(r'.\result\by-user', str(user_id) + '-' + pixiv_user.account)
     download_by_user_id(save_dir, user_id, split_r_18=False, **kwargs)
 
 
@@ -274,24 +272,39 @@ def refresh_collect_user(collect_user_dir: str):
     illust_files = os.listdir(collect_user_dir)
     for illust_file in illust_files:
         # 获取目录或者文件的路径
-        if not os.path.isdir(os.path.join(collect_user_dir, illust_file)):
-            log.info('The file is not dir: {}'.format(illust_file))
+        full_file_path = os.path.join(collect_user_dir, illust_file)
+        if not os.path.isdir(full_file_path):
+            log.info('The file is not dir: {}'.format(full_file_path))
             continue
         log.info('--> begin refresh use dir: {}'.format(illust_file))
-        download_task_by_user_id(save_dir=os.path.join(collect_user_dir, illust_file), check_download=False)
+        download_task_by_user_id(save_dir=full_file_path, check_download=False)
         log.info('--> end refresh use dir: {}'.format(illust_file))
+
+
+def refresh_sub_collect_user(collect_user_dir: str):
+    files = os.listdir(collect_user_dir)
+    for file in files:
+        full_file_path = os.path.join(collect_user_dir, file)
+        if not os.path.isdir(full_file_path):
+            log.info('The file is not dir: {}'.format(full_file_path))
+            continue
+        refresh_collect_user(os.path.join(collect_user_dir, file))
 
 
 if __name__ == '__main__':
     # download_by_pool()
-    # download_top(spilt_bookmark=False, skip_min_width=1000, skip_min_height=1000, skip_r_18=True)
+    download_top(spilt_bookmark=False, skip_min_width=1000, skip_min_height=1000, skip_r_18=True)
     # tag = 'プリコネ'
     # download_by_tag(os.path.join(r'.\result\by-tag', tag), tag)
     # download_by_illustration_id(r'.\result\illust', illustration_id=43302392, skip_ignore=False, skip_download=False)
-    # download_task_by_user_id(save_dir=r'result\collect-user\3036679-甘城なつき-猫羽雫-蓝发猫耳萝莉', check_download=False)
-    download_task_by_user_id(save_dir=r'result\by-user\50258193-逆流茶会-R-18', check_download=False,
-                             skip_max_page_count=10)
+    # download_task_by_user_id(save_dir=r'result\collect-user\1960050-torino-极致色彩-人物场景', check_download=False)
+    # download_task_by_user_id(save_dir=r'result\by-user\50258193-逆流茶会-R-18', check_user_download=False,
+    #                          skip_max_page_count=5, skip_download=True)
     # download_task_by_user_id(illust_id=74853306)
-    # download_task_by_user_id(user_id=50258193, check_download=False, skip_max_page_count=10)
+    # user_ids = ['3428351', '7638711', '7640889', '10950860']
+    # for user_id in user_ids:
+    #     download_task_by_user_id(user_id=user_id, skip_download=True, min_total_bookmarks=10000)
+    # download_task_by_user_id(illust_id=76967842, skip_download=True, min_total_bookmarks=10000)
+    # refresh_collect_user(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\favorite')
     # refresh_collect_user(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\collect-user')
 

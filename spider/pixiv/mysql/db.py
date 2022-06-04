@@ -173,8 +173,12 @@ def update_user_tag(user_id, tag, replace=True):
         log.info('the user({}) has tag({}) and do not change.'.format(user_id, user.tag))
 
 
+def get_pixiv_user(user_id) -> PixivUser:
+    return session.query(PixivUser).get(user_id)
+
+
 def is_download_user(user_id) -> bool:
-    user: PixivUser = session.query(PixivUser).get(user_id)
+    user: PixivUser = get_pixiv_user(user_id)
     return user is not None and user.tag != ''
 
 
