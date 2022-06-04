@@ -4,11 +4,10 @@ import os
 import numpy as np
 import cv2
 import u_base.u_log as log
+import u_base.u_file as u_file
 
-from spider.pixiv.arrange.file_util import get_all_image_paths
 from spider.pixiv.arrange.image_util import get_image
 from skimage.metrics import structural_similarity
-from matplotlib import pyplot as plt
 
 
 def compare_similarity():
@@ -17,7 +16,7 @@ def compare_similarity():
     sim_directory = os.path.join(directory, 'sim')
     if not os.path.isdir(sim_directory):
         os.makedirs(sim_directory)
-    image_paths = get_all_image_paths(directory, use_cache=False)
+    image_paths = u_file.get_all_sub_files_with_cache(directory, use_cache=False)
     dimension = 200
     log.info('all image size: {}'.format(len(image_paths)))
     similarities = []

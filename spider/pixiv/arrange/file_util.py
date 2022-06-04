@@ -15,7 +15,6 @@ __all__ = [
     'get_base_path',
     'get_illust_id',
     'collect_illust',
-    'get_all_image_paths'
 ]
 
 
@@ -73,42 +72,6 @@ def get_illust_id(illust_file_path: str) -> int:
         return int(illust_id)
     log.warn('The illust_id is error. illust_file: {}'.format(illust_file_path))
     return -1
-
-
-def get_all_image_paths(image_directory: str, use_cache: bool = True, contain_dir=False) -> list:
-    """
-    递归获取某个文件夹下的所有图片和文件夹
-    :param image_directory: 图片路径
-    :param use_cache: 是否使用缓存
-    :param contain_dir: 返回值是否包含目录
-    :return: 图片绝对路径列表
-    """
-    log.info('begin get all image files from path: {}'.format(image_directory))
-    if not os.path.isdir(image_directory):
-        log.error('The image directory is not exist: {}'.format(image_directory))
-        return []
-
-    # 构建cache文件夹并检查是否存在cache
-    cache_file_path = get_cache_path(image_directory, 'image_paths', 'txt')
-    cache_file_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), cache_file_path)
-    if use_cache and os.path.isfile(cache_file_path):
-        # 存在缓存文件直接使用缓存
-        log.info('read all image file from cache: {}'.format(cache_file_path))
-        return u_file.read_file_as_list(cache_file_path)
-
-    # 如果cache目录不存在，则创建
-    if not os.path.isdir(os.path.split(cache_file_path)[0]):
-        log.info('create the cache directory: {}'.format(cache_file_path))
-        os.makedirs(os.path.split(cache_file_path)[0])
-    all_files = u_file.get_all_sub_files(image_directory, contain_dir=contain_dir)
-
-    # 将结果存入cache
-    cache_file_path_handler = open(cache_file_path, 'w+', encoding='utf-8')
-    for file in all_files:
-        cache_file_path_handler.writelines(file + '\n')
-    cache_file_path_handler.close()
-    log.info('get_all_image_files finish. file size: {}'.format(len(all_files)))
-    return all_files
 
 
 def collect_illust(collect_name, source_illust_file_path):

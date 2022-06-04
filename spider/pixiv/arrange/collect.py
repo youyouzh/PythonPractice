@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import json
 import os
 
 import u_base.u_log as log
-from spider.pixiv.arrange.file_util import collect_illust, get_illust_id, get_all_image_paths
+import u_base.u_file as u_file
+from spider.pixiv.arrange.file_util import collect_illust, get_illust_id
 from spider.pixiv.mysql.db import session, Illustration, update_illustration_tag, update_user_tag
 
 __all__ = [
@@ -144,19 +144,19 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
     """
     log.info('begin collect illusts. tag: {}, max_collect_count: {}'.format(collect_tag, max_collect_count))
     default_kwargs = {
-        'target_directory': r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\illusts',
+        'target_directory': r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result',
         'use_cache': True
     }
     default_kwargs.update(kwargs)
     kwargs = default_kwargs
 
-    illust_paths = get_all_image_paths(kwargs.get('target_directory'), kwargs.get('use_cache'))
+    illust_paths = u_file.get_all_sub_files_with_cache(kwargs.get('target_directory'), use_cache=kwargs.get('use_cache'))
     collect_count = 0
     for illust_path in illust_paths:
         if not os.path.isfile(illust_path):
-            # log.warn('The file is not exist: {}'.format(illust_path))
+            log.warn('The file is not exist: {}'.format(illust_path))
             continue
-        if collect_function(illust_path, **kwargs):
+        if collect_function(illust_path):
             collect_illust(collect_tag, illust_path)
             collect_count += 1
         if collect_count >= max_collect_count:
@@ -167,15 +167,14 @@ def collect_illusts(collect_tag='back', collect_function=None, max_collect_count
 if __name__ == '__main__':
     # illust_id = 60881929
     # user_id = get_user_id_by_illust_id(illust_id)
+    # base_dir = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result'
 
     # user_id = 935581
-    # collect_illusts(str(user_id), is_special_illust_ids, 1000, user_id=user_id, use_cache=False)
-    base_dir = r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result'
+    # collect_illusts('invalid', collect_function=is_small_size, max_collect_count=1000)   # 无效图片
+    # collect_illusts(user_id, is_special_illust_ids, 1000, use_cache=False)
     # collect_illusts(r'ignore', is_small_size, 10)  # ゴスロリ  雪  バロック世界  ワンピース服  動物擬人化 雪風  セーラー服
     update_dir_illust_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore', 'ignore')
     # update_dir_user_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore', 'download')
     # update_dir_user_tag(r'G:\Projects\Python_Projects\python-base\spider\pixiv\crawler\result\ignore', 'ignore')
     # check_user_id(target_directory)
     # extract_top(target_directory, 20)
-
-    # 本地映射与去重
