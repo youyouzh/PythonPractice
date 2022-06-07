@@ -15,4 +15,4 @@ def test_get_illust_id():
 
 def test_check_user_id():
     target_directory = r'..\crawler\result\collect\4754550-可爱画风-check\4752417'
-    check_user_id(target_directory)
+    move_user_illusts(target_directory)
