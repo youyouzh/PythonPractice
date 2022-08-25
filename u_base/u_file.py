@@ -472,3 +472,19 @@ def get_path(file_name: str, with_file_name=True) -> str:
     path, file = os.path.split(file_name)
     filename, suffix = os.path.splitext(file)
     return path + filename if with_file_name else ''
+
+
+def get_file_meta(file_name: str) -> dict:
+    """
+    提取文件元数据信息
+    :param file_name: 文件路径
+    :return: 包括文件后缀，路径等的字典
+    """
+    path, file = os.path.split(file_name)
+    filename, suffix = os.path.splitext(file)
+    return {
+        'path': path,
+        'file': file,
+        'filename': filename,
+        'suffix': suffix
+    }
