@@ -1,5 +1,4 @@
 import re
-import time
 from typing import List
 
 import shutil
@@ -16,12 +15,19 @@ from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 
 _REQUESTS_KWARGS = {
     # 'proxies': {
-    #   'https': 'http://127.0.0.1:1080',
+    #   'https': 'http://127.0.0.1:1080',  # use proxy
     # },
+    # 'verify': False
 }
+POOL_SIZE = 10
 
 
 def get_ts_save_dir(m3u8_url: str):
+    """
+    根据资源路径生成保存文件夹路径
+    :param m3u8_url: m3u8 url
+    :return: 保存文件夹名
+    """
     parse_url = urlparse(urljoin(m3u8_url, ''))
     url_path = os.path.dirname(parse_url.path)
     save_dir = os.path.join(r'result\ts', u_file.convert_windows_path(url_path))
@@ -30,7 +36,12 @@ def get_ts_save_dir(m3u8_url: str):
 
 
 def crawl_video_info(template_page_url: str):
-    max_page = 140
+    """
+    爬取网页视频信息，分页爬取，主要有标题，观看数，喜欢数，下载地址
+    :param template_page_url: 首页url
+    :return:
+    """
+    max_page = 263
     video_infos = []
     parse_url = urlparse(template_page_url)
     for index in range(1, max_page):
@@ -52,11 +63,17 @@ def crawl_video_info(template_page_url: str):
                 'like': like_count
             })
         video_infos.sort(key=lambda x: x['like'], reverse=True)
-        u_file.cache_json(video_infos, r'result\video-infos.jon')
+        u_file.cache_json(video_infos, r'result\video-infos-zh.json')
     return video_infos
 
 
 def extract_m3u8_url(html_content: str) -> str or None:
+    """
+    从网页中提取视频流 m3u8 下载地址
+    :param html_content: html页面内容
+    :return:
+    """
+    # 正在匹配查找资源
     pattern = re.compile(r'player_aaaa=(\{.+\})')
     search_content = re.search(pattern, html_content)
     if search_content is None:
@@ -72,16 +89,12 @@ def extract_m3u8_url(html_content: str) -> str or None:
     return json_data['url']
 
 
-def extract_title(html_content: str):
-    pattern = re.compile(r'content="([^<>]+)剧情:"')
-    search_content = re.search(pattern, html_content)
-    if search_content is None:
-        log.error('Can not match any title.')
-        return None
-    return search_content.group(1).strip()
-
-
 def extract_ts_urls(m3u8_url: str) -> List[str]:
+    """
+    查询m3u8_url，获取所有视频片段ts的下载地址
+    :param m3u8_url: m3u8视频流地址
+    :return: ts下载地址列表
+    """
     # m3u8 cache file path
     parse_url = urlparse(m3u8_url)
     cache_file = os.path.join(r'result\m3u8', u_file.convert_windows_path(parse_url.path))
@@ -101,31 +114,35 @@ def extract_ts_urls(m3u8_url: str) -> List[str]:
     return ts_urls
 
 
-def download_ts_file(m3u8_url: str, ts_urls: List[str]):
-    save_dir = get_ts_save_dir(m3u8_url)
-    index = 1
-    for ts_url in ts_urls:
-        file_name = u_file.get_file_name_from_url(ts_url)
-        u_file.download_file(ts_url, file_name, save_dir, **_REQUESTS_KWARGS)
-        log.info('download ts file success({}/{}): {}'.format(index, len(ts_urls), ts_url))
-        index += 1
-
-
 def download_ts_file_with_pool(m3u8_url: str, ts_urls: List[str]):
+    """
+    多线程线程池下载视频分片ts文件
+    :param m3u8_url:
+    :param ts_urls:
+    :return:
+    """
     save_dir = get_ts_save_dir(m3u8_url)
     log.info('download ts file with pool.')
-    pool = ThreadPoolExecutor(10)
+    pool = ThreadPoolExecutor(POOL_SIZE)
     tasks = []
     for ts_url in ts_urls:
         file_name = u_file.get_file_name_from_url(ts_url)
         future = pool.submit(u_file.download_file, ts_url, file_name, save_dir, **_REQUESTS_KWARGS)
         tasks.append(future)
 
+    # 等待所有线程完成
     wait(tasks, return_when=ALL_COMPLETED)
     log.info('all ts file download success.')
 
 
 def merge_ts_file(m3u8_url: str, video_name: str, decrypt_function=None):
+    """
+    合并视频分片ts文件
+    :param m3u8_url: 视频流地址
+    :param video_name: 视频名称
+    :param decrypt_function: ts文件解密算法
+    :return:
+    """
     merge_file_path = os.path.join(r'result\video', video_name + '.mp4')
     u_file.ready_dir(merge_file_path)
     merge_file_handle = open(merge_file_path, 'wb')
@@ -149,23 +166,40 @@ def merge_ts_file(m3u8_url: str, video_name: str, decrypt_function=None):
 
 def download_by_page_url(page_url: str):
     """
-    下载 hsck.us
+    下载 hscangku.com 指定页面视频
     :param page_url: 视频页面地址
     :return: None
     """
     response = u_file.get_content(page_url)
     m3u8_url = extract_m3u8_url(response)
-    title = extract_title(response)
+
+    # 正则匹配提取视频标题
+    pattern = re.compile(r'content="([^<>]+)剧情:"')
+    search_content = re.search(pattern, response)
+    title = search_content.group(1).strip()
+
     download_with_m3u8_url(title, m3u8_url)
 
 
-def download_with_m3u8_url(title, m3u8_url):
+def download_with_m3u8_url(title, m3u8_url, decrypt_function=None):
+    """
+    下载m3u8视频
+    :param title: 视频标题，用于保存文件名
+    :param m3u8_url: m3u8视频地址
+    :param decrypt_function: 如果视频流有加密，需要提供解密算法
+    """
     ts_urls = extract_ts_urls(m3u8_url)
     download_ts_file_with_pool(m3u8_url, ts_urls)
-    merge_ts_file(m3u8_url, title)
+    merge_ts_file(m3u8_url, title, decrypt_function)
 
 
 def decrypt_aes(m3u8_url: str, encrypt_data):
+    """
+    视频流AES解密算法实现
+    :param m3u8_url: 视频流地址，获取解密key
+    :param encrypt_data: 加密数据
+    :return:
+    """
     # get decrypt key
     key_url = urljoin(m3u8_url, 'key.key')
     parse_url = urlparse(key_url)
@@ -180,13 +214,7 @@ def decrypt_aes(m3u8_url: str, encrypt_data):
     return decrypt_data.rstrip(b'\0')
 
 
-def download_by_m3u8(m3u8_url: str, video_name: str):
-    ts_urls = extract_ts_urls(m3u8_url)
-    download_ts_file_with_pool(m3u8_url, ts_urls)
-    merge_ts_file(m3u8_url, video_name, decrypt_aes)
-
-
 if __name__ == '__main__':
-    # download_by_page_url('http://823ck.cc/vodplay/1649-1-1.html')
-    download_with_m3u8_url('xx', 'https://ckcdnz1.cdn2020.com/video/m3u8/2020/06/07/ce331a28/index.m3u8')
+    # download_by_page_url('http://645ck.cc/vodplay/16553-1-1.html')
+    crawl_video_info('http://666386.xyz/vodtype/15-{}.html')
     # decrypt_aes()
