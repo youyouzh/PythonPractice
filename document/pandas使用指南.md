@@ -1,4 +1,4 @@
-# pandas使用
+# pandas使用指南
 
 官网地址: <https://pandas.pydata.org/>， 文档地址：<https://pandas.pydata.org/docs/getting_started/10min.html#min>
 
