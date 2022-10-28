@@ -7,6 +7,7 @@ import os
 import time
 import json
 import re
+import hashlib
 import urllib.parse
 import requests
 from PIL import Image
@@ -63,7 +64,24 @@ def get_file_name_from_url(url):
     :return: 文件名
     """
     file_name = os.path.basename(url)
+    file_name = file_name.split('?')[0]
     return urllib.parse.unquote(file_name)
+
+
+def get_md5_file_name_from_url(url, with_time=False):
+    """
+    获取md5的文件名，相比于 get_file_name_from_url 这个函数比较安全，和所给的url格式无关
+    :param url: 任意的url
+    :param with_time: 文件名中添加时间
+    :return: 文件名
+    """
+    file_name = ''
+    if with_time:
+        file_name += time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time())) + '-'
+    file_name += hashlib.md5(url.encode(encoding='utf-8')).hexdigest()
+    # 添加文件后缀
+    file_name += url.split('.')[-1]
+    return file_name
 
 
 def covert_url_to_filename(url, with_domain=True, with_path=True):
@@ -274,7 +292,11 @@ def download_file(url, filename, path=os.path.curdir, replace=False, with_progre
     # Write stream to file
     log.info('begin download file from url: {}, save filename: {}'.format(url, filename))
     try:
-        response = requests.get(url, stream=True, headers=COMMON_HEADERS, **kwargs)
+        if 'headers' not in kwargs:
+            kwargs['headers'] = COMMON_HEADERS
+        else:
+            kwargs['headers']['user-agent'] = COMMON_USER_AGENT
+        response = requests.get(url, stream=True, **kwargs)
         if response.status_code != 200:
             log.error('download file success. url: {}, code: {}'.format(url, response.status_code))
             return False

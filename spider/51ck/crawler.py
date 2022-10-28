@@ -1,10 +1,9 @@
 import re
-from typing import List
-
 import shutil
 import os
 import json
 
+from typing import List
 from bs4 import BeautifulSoup
 
 import u_base.u_file as u_file
@@ -17,7 +16,18 @@ _REQUESTS_KWARGS = {
     # 'proxies': {
     #   'https': 'http://127.0.0.1:1080',  # use proxy
     # },
-    # 'verify': False
+    # 'verify': False,
+
+    # 下面的header适用于 https://www.xvideos.com/
+    # 'verify': False,  # 必须关闭
+    'headers': {
+        'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': 'Windows',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site'
+    }
 }
 POOL_SIZE = 10
 
@@ -28,9 +38,7 @@ def get_ts_save_dir(m3u8_url: str):
     :param m3u8_url: m3u8 url
     :return: 保存文件夹名
     """
-    parse_url = urlparse(urljoin(m3u8_url, ''))
-    url_path = os.path.dirname(parse_url.path)
-    save_dir = os.path.join(r'result\ts', u_file.convert_windows_path(url_path))
+    save_dir = os.path.join(r'result\ts', u_file.get_md5_file_name_from_url(m3u8_url))
     u_file.ready_dir(save_dir, True)
     return save_dir
 
@@ -96,8 +104,7 @@ def extract_ts_urls(m3u8_url: str) -> List[str]:
     :return: ts下载地址列表
     """
     # m3u8 cache file path
-    parse_url = urlparse(m3u8_url)
-    cache_file = os.path.join(r'result\m3u8', u_file.convert_windows_path(parse_url.path))
+    cache_file = os.path.join(r'result\m3u8', u_file.get_md5_file_name_from_url(m3u8_url))
 
     # extract full ts file urls
     response = u_file.get_content_with_cache(m3u8_url, cache_file, **_REQUESTS_KWARGS)
@@ -105,7 +112,7 @@ def extract_ts_urls(m3u8_url: str) -> List[str]:
         ts_urls = json.loads(response)
     else:
         lines = response.split('\n')
-        ts_urls: List[str] = [urljoin(m3u8_url, line.rstrip()) for line in lines if line.rstrip().endswith('.ts')]
+        ts_urls: List[str] = [urljoin(m3u8_url, line.rstrip()) for line in lines if '.ts' in line.rstrip()]
     if len(ts_urls) == 0:
         log.error('extract ts urls failed.')
         return []
@@ -149,7 +156,7 @@ def merge_ts_file(m3u8_url: str, video_name: str, decrypt_function=None):
 
     ts_dir = get_ts_save_dir(m3u8_url)
     for ts_filename in os.listdir(ts_dir):
-        if not ts_filename.rstrip().endswith('.ts'):
+        if '.ts' not in ts_filename.rstrip():
             continue
         ts_filepath = os.path.join(ts_dir, ts_filename)
         ts_file_handle = open(ts_filepath, 'rb')
@@ -202,8 +209,7 @@ def decrypt_aes(m3u8_url: str, encrypt_data):
     """
     # get decrypt key
     key_url = urljoin(m3u8_url, 'key.key')
-    parse_url = urlparse(key_url)
-    cache_file = os.path.join(r'result\m3u8', u_file.convert_windows_path(parse_url.path))
+    cache_file = os.path.join(r'result\m3u8', u_file.get_md5_file_name_from_url(m3u8_url))
     key = u_file.get_content_with_cache(key_url, cache_file)
     log.info('get key success: {}'.format(key))
 
@@ -215,6 +221,6 @@ def decrypt_aes(m3u8_url: str, encrypt_data):
 
 
 if __name__ == '__main__':
-    # download_by_page_url('http://645ck.cc/vodplay/16553-1-1.html')
-    crawl_video_info('http://666386.xyz/vodtype/15-{}.html')
+    download_by_page_url('http://645ck.cc/vodplay/16553-1-1.html')
+    # crawl_video_info('http://666386.xyz/vodtype/15-{}.html')
     # decrypt_aes()
