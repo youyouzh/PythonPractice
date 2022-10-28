@@ -1,28 +1,44 @@
-## 环境搭建
+## 概述
+
+### 说明
+
+本项目是`uusama`的个人学习向python项目，其中主要包括：
+
+- python爬虫
+- python工具
+- 机器学习
+- python基本库
+- leetcode刷题实现
+
+主要包含各种代码实现已经相关的一些文档。
+
+## 文件结构
+
+```txt
+├── leetcode        # leetcode 刷题代码
+├── deeplearning    # 深度学习相关代码和文档
+├── spider          # 各种爬虫代码
+├── tool            # 常用基本工具
+├── test            # 单元测试库
+└── u_base          # 基本工具库
+```
+
+## Windows使用conda搭建python环境
+
+强烈建议使用`Anaconda`进行`Python`环境搭建，可以更好的管理依赖，`Anaconda`可以同时创建多个版本的`Python`虚拟环境，非常方便。。
 
 ### conda安装python
 
-强烈建议使用`Anaconda`进行`Python`环境搭建，[Anaconda下载地址](https://www.anaconda.com/download/)。
-
-选择Python3.7+以上的Windows版本，`Anaconda`安装完成以后，还需配置相应的环境变量，下面的目录请更换为自己的conda安装目录。
+[Anaconda下载地址](https://www.anaconda.com/download/)。 选择Python3.7+以上的Windows版本，`Anaconda`安装完成以后，还需配置相应的环境变量，下面的目录请更换为自己的conda安装目录。
 
 - `C:\Devlope\anaconda3\Scripts`
 - `C:\Devlope\anaconda3\condabin`
 
-conda离线初见虚拟环境：`conda create -n uusama --clone base`，默认环境中有比较多常用的库，conda常用命令如下：
+conda离线创建虚拟环境：`conda create -n uusama --clone base`，默认环境中有比较多常用的库，
 
-- 虚拟环境列表： `conda env list`
-- 断网时创建： `conda create -n uusama --offline`
-- 复制创建： `conda create -n uusama --clone base`
-- 激活虚拟环境： `conda activate uusama`
-- 删除环境： `conda remove -n uusama --all`
-- 添加源： `conda config --add channels`
-- 移除源： `conda config --remove channels`
-- 删除没用的包： `conda clean -p`
-- 删除所有的安装包及cache： `conda clean -y --all`
-- 升级conda： `conda update conda`
+如果只是创建一个纯净的新环境，可以用`conda.bat create -n uusama python3.7`。
 
-conda安装很慢时，更换源：
+conda安装很慢或者安装报网络连接错误时，考虑更换源：
 
 ```bash
 # 清华的源
@@ -38,7 +54,24 @@ conda config --add channels http://mirrors.aliyun.com/pypi/simple/
 conda config --set show_channel_urls yes
 ```
 
+### conda常用命令如下：
+
+- 虚拟环境列表： `conda env list`
+- 断网时创建： `conda create -n uusama --offline`
+- 复制创建： `conda create -n uusama --clone base`
+- 激活虚拟环境： `conda activate uusama`
+- 删除环境： `conda remove -n uusama --all`
+- 添加源： `conda config --add channels`
+- 移除源： `conda config --remove channels`
+- 删除没用的包： `conda clean -p`
+- 删除所有的安装包及cache： `conda clean -y --all`
+- 升级conda： `conda update conda`
+- 重命名环境名（先克隆后删除）： `conda create -n newname --clone oldname && conda remove -n oldname --all`
+
+
 ### Pycharm配置conda
+
+Pycharm是非常方便的Python相关IDE，可以下载社区免费版本，[PyCharm Community 版本下载地址](https://www.jetbrains.com/pycharm/download/)。
 
 Pycharm中配置conda环境的方法：
 
@@ -59,42 +92,3 @@ Setting -> Project -> Project Interpreter -> Add -> Conda Environment
 - `SQLAlchemy`: ORM数据库操作，依赖`wheel`包，[Document]((https://docs.sqlalchemy.org/en/13/intro.html))
 
 可以直接`pip install -r requirements.txt`安装所有依赖。
-
-## 文件结构说明
-
-```txt
-├── leetcode        # leetcode 刷题代码
-├── spider          # 爬虫代码
-│   ├── hacg        # hacg琉璃神社网页爬虫
-│   └── pixiv       # pixiv客户端API爬虫
-│       ├── crawler # 爬虫代码
-│       ├── mysql   # 图片数据库实体以及处理
-│       │   ├── entity   # pixiv图片和用户实体
-│       │   └── entity_example  # 爬虫示例数据
-│       └── pixiv_api    # pixiv api封装
-├── tool                 # 常用基本工具
-│   ├── file_process     # 文件处理
-│   └── xiaomi_note_backup
-└── u_base               # 基本工具库
-```
-
-### u_base
-
-常用的基本库。
-
-- log.py: logging 日志封装
-- u_exception.py: 异常类型封装
-- u_platform.py: 平台相关函数
-- unittest.py: 单元测试函数
-- version.py: 关于本库的版本说明
-
-
-### 单元测试运行
-
-PyCharm 单元测试配置方法，推荐使用nose进行单元测试，避免unittest自带单测必须定义类的问题。
-
-File -> Settings -> Tools -> Python Integrated Tools -> Testing, 选择`Nosetests`。
-
-此时下方会有`Fix`标识，需要安装`nose`库，点击即可安装。
-
-Pycharm会自动识别包含`test`的模块名，文件名，方法名，并可以已nose进行单元测试。
