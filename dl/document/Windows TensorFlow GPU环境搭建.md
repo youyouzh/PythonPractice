@@ -2,60 +2,7 @@
 
 ## 安装python环境
 
-### conda安装python
-
-强烈建议使用`Anaconda`进行`Python`环境搭建，`Anaconda`可以同时创建多个版本的`Python`虚拟环境，非常方便。[Anaconda下载地址](https://www.anaconda.com/download/)。
-
-选择Python3.7+以上的Windows版本，`Anaconda`安装完成以后，还需配置相应的环境变量，下面的目录请更换为自己的conda安装目录。
-
-- `C:\Devlope\anaconda3\Scripts`
-- `C:\Devlope\anaconda3\condabin`
-
-conda离线创建虚拟环境：`conda.bat create -n uusama --clone base`，默认环境中有比较多常用的库。
-
-如果只是创建一个纯净的新环境，可以用`conda.bat create -n uusama python3.7`。
-
-conda安装很慢或者安装报网络连接错误时，考虑更换源：
-
-```bash
-# 清华的源
-conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
-conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
-
-# 其他可选的源
-# 中科大的源
-conda config --add channels https://mirrors.ustc.edu.cn/anaconda/pkgs/free/
-# 阿里云的源
-conda config --add channels http://mirrors.aliyun.com/pypi/simple/
-
-conda config --set show_channel_urls yes
-```
-
-### Pycharm配置conda
-
-Pycharm是非常方便的Python相关IDE，可以下载免费版本，[PyCharm Community 版本下载地址](https://www.jetbrains.com/pycharm/download/)。
-
-Pycharm中配置conda环境的方法：
-
-Setting -> Project -> Project Interpreter -> Add -> Conda Environment
-
-选择刚才创建的虚拟环境下`C:\Devlope\anaconda3\envs\uusama`的`Python.exe`即可。
-
-### conda常用命令
-
-windows环境可以使用`conda.bat`代替`conda`。
-
-- 虚拟环境列表： `conda env list`
-- 创建指定版本环境： `conda create -n faceswap python=3.7`
-- 断网时创建： `conda create -n faceswap --offline`
-- 复制环境创建： `conda create -n faceswap --clone base`
-- 激活虚拟环境： `conda activate faceswap`
-- 关闭当前虚拟环境： `conda deactivate`
-- 删除虚拟环境： `conda remove -n faceswap --all`
-- 添加源： `conda config --add channels`
-- 移除源： `conda config --remove channels`
-- 删除没用的包： `conda clean -p`
-- 重命名环境名（先克隆后删除）： `conda create -n newname --clone oldname && conda remove -n oldname --all`
+使用anaconda安装python参考[该文档](../../README.md)。
 
 ## 安装cuda
 
