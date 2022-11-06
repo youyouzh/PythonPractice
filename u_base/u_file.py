@@ -68,30 +68,19 @@ def get_file_name_from_url(url):
     return urllib.parse.unquote(file_name)
 
 
-def get_md5_file_name_from_url(url, with_time=False):
-    """
-    获取md5的文件名，相比于 get_file_name_from_url 这个函数比较安全，和所给的url格式无关
-    :param url: 任意的url
-    :param with_time: 文件名中添加时间
-    :return: 文件名
-    """
-    file_name = ''
-    if with_time:
-        file_name += time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time())) + '-'
-    file_name += hashlib.md5(url.encode(encoding='utf-8')).hexdigest()
-    # 添加文件后缀
-    file_name += url.split('.')[-1]
-    return file_name
-
-
-def covert_url_to_filename(url, with_domain=True, with_path=True):
+def covert_url_to_filename(url, with_domain=True, with_path=True, with_md5=False):
     """
     将url转化为文件名，一帮用于缓存文件生成
     :param with_domain: 文件名加上域名
     :param with_path: 文件名加上请求路径
+    :param with_md5: 对url使用md5
     :param url: url
     :return: filename
     """
+    # 直接对整个url进行md5
+    if with_md5:
+        return hashlib.md5(url.encode(encoding='utf-8')).hexdigest()
+
     parse_result = urllib.parse.urlsplit(url)
     file_name = ''
     if with_domain:
