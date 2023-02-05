@@ -26,6 +26,10 @@ def test_read_write_file():
 def test_get_file_name_from_url():
     url = 'https://files.yande.in/image/yande.re%20485154%20bra%20breasts%20nipples%20nurse%20thighhighs.png'
     u_unittest.assert_eq('yande.re 485154 bra breasts nipples nurse thighhighs.png', u_file.get_file_name_from_url(url))
+    url = 'https://play1.laoyacdn.com/20220304/HM8Q1ZqM/2000kb/hls/index.m3u8'
+    u_unittest.assert_eq('index.m3u8', u_file.get_file_name_from_url(url))
+    url = 'https://hls-hw.xvideos-cdn.com/videos//hls-1080p-66418.m3u8?e=1667418251&l=0&h=1f0'
+    u_unittest.assert_eq('hls-1080p-66418.m3u8', u_file.get_file_name_from_url(url))
 
 
 def test_download_file():

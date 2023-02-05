@@ -30,6 +30,7 @@ _REQUESTS_KWARGS = {
     }
 }
 POOL_SIZE = 10
+MEMORY_CACHE = {}   # 全局内存缓存
 
 
 def get_ts_save_dir(m3u8_url: str):
@@ -38,9 +39,18 @@ def get_ts_save_dir(m3u8_url: str):
     :param m3u8_url: m3u8 url
     :return: 保存文件夹名
     """
-    save_dir = os.path.join(r'result\ts', u_file.get_md5_file_name_from_url(m3u8_url))
+    save_dir = os.path.join(r'result\ts', u_file.covert_url_to_filename(m3u8_url))
     u_file.ready_dir(save_dir, True)
     return save_dir
+
+
+def get_ts_download_filename(ts_url: str):
+    """
+    统一获取ts文件下载保存文件名称
+    :param ts_url: ts下载地址
+    :return: 文件名
+    """
+    return u_file.get_file_name_from_url(ts_url)
 
 
 def crawl_video_info(template_page_url: str):
@@ -104,7 +114,7 @@ def extract_ts_urls(m3u8_url: str) -> List[str]:
     :return: ts下载地址列表
     """
     # m3u8 cache file path
-    cache_file = os.path.join(r'result\m3u8', u_file.get_md5_file_name_from_url(m3u8_url))
+    cache_file = os.path.join(r'result\m3u8', u_file.covert_url_to_filename(m3u8_url))
 
     # extract full ts file urls
     response = u_file.get_content_with_cache(m3u8_url, cache_file, **_REQUESTS_KWARGS)
@@ -133,7 +143,7 @@ def download_ts_file_with_pool(m3u8_url: str, ts_urls: List[str]):
     pool = ThreadPoolExecutor(POOL_SIZE)
     tasks = []
     for ts_url in ts_urls:
-        file_name = u_file.get_file_name_from_url(ts_url)
+        file_name = get_ts_download_filename(ts_url)
         future = pool.submit(u_file.download_file, ts_url, file_name, save_dir, **_REQUESTS_KWARGS)
         tasks.append(future)
 
@@ -142,10 +152,11 @@ def download_ts_file_with_pool(m3u8_url: str, ts_urls: List[str]):
     log.info('all ts file download success.')
 
 
-def merge_ts_file(m3u8_url: str, video_name: str, decrypt_function=None):
+def merge_ts_file(m3u8_url: str, ts_urls: List, video_name: str, decrypt_function=None):
     """
     合并视频分片ts文件
     :param m3u8_url: 视频流地址
+    :param ts_urls: 按照顺序拍好的片段下载地址列表
     :param video_name: 视频名称
     :param decrypt_function: ts文件解密算法
     :return:
@@ -155,10 +166,14 @@ def merge_ts_file(m3u8_url: str, video_name: str, decrypt_function=None):
     merge_file_handle = open(merge_file_path, 'wb')
 
     ts_dir = get_ts_save_dir(m3u8_url)
-    for ts_filename in os.listdir(ts_dir):
-        if '.ts' not in ts_filename.rstrip():
-            continue
+    for ts_url in ts_urls:
+        # 按照ts_url的顺序依次查找文件并进行拼接
+        ts_filename = get_ts_download_filename(ts_url)
         ts_filepath = os.path.join(ts_dir, ts_filename)
+        if not os.path.isfile(ts_filepath):
+            log.error('This ts file is not exist. cannot merge.')
+            return
+
         ts_file_handle = open(ts_filepath, 'rb')
         ts_file_content = ts_file_handle.read()
         if decrypt_function is not None:
@@ -197,7 +212,7 @@ def download_with_m3u8_url(title, m3u8_url, decrypt_function=None):
     """
     ts_urls = extract_ts_urls(m3u8_url)
     download_ts_file_with_pool(m3u8_url, ts_urls)
-    merge_ts_file(m3u8_url, title, decrypt_function)
+    merge_ts_file(m3u8_url, ts_urls, title, decrypt_function)
 
 
 def decrypt_aes(m3u8_url: str, encrypt_data):
@@ -208,10 +223,20 @@ def decrypt_aes(m3u8_url: str, encrypt_data):
     :return:
     """
     # get decrypt key
-    key_url = urljoin(m3u8_url, 'key.key')
-    cache_file = os.path.join(r'result\m3u8', u_file.get_md5_file_name_from_url(m3u8_url))
-    key = u_file.get_content_with_cache(key_url, cache_file)
-    log.info('get key success: {}'.format(key))
+    if 'hls/index.m3u8' in m3u8_url:
+        # https://www.pornlulu.com/ 网站key路径取法
+        key_url = m3u8_url.replace('index.m3u8', 'key.key')
+    else:
+        key_url = urljoin(m3u8_url, 'key.key')
+
+    # 获取key
+    if 'aes-key' in MEMORY_CACHE:
+        key = MEMORY_CACHE['aes-key']
+    else:
+        cache_file = os.path.join(r'result\m3u8', u_file.covert_url_to_filename(key_url))
+        key = u_file.get_content_with_cache(key_url, cache_file)
+        MEMORY_CACHE['aes-key'] = key
+        log.info('get key success: {}'.format(key))
 
     # aes decrypt input
     iv = b'0000000000000000'
