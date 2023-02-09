@@ -31,6 +31,8 @@
 
 [Anaconda下载地址](https://www.anaconda.com/download/)。 选择Python3.7+以上的Windows版本，`Anaconda`安装完成以后，还需配置相应的环境变量，下面的目录请更换为自己的conda安装目录。
 
+**注意最新版anaconda安装的时候一定要以管理员身份安装，不然安装文件不完整，只有Lib几个文件，就一个_conda.exe，巨坑**。
+
 - `C:\Devlope\anaconda3\Scripts`
 - `C:\Devlope\anaconda3\condabin`
 
@@ -59,42 +61,47 @@ conda config --set show_channel_urls yes
 
 window和linux一样都是修改home目录下的.condarc文件。
 
+清华源（首选）
+
+```config
+channels:
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/msys2/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/fastai/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/bioconda/
+show_channel_urls: true
+```
+
 阿里源
 
 ```config
 channels:
-  - defaults
-show_channel_urls: true
-default_channels:
   - http://mirrors.aliyun.com/anaconda/pkgs/main
   - http://mirrors.aliyun.com/anaconda/pkgs/r
   - http://mirrors.aliyun.com/anaconda/pkgs/msys2
-custom_channels:
-  conda-forge: http://mirrors.aliyun.com/anaconda/cloud
-  msys2: http://mirrors.aliyun.com/anaconda/cloud
-  bioconda: http://mirrors.aliyun.com/anaconda/cloud
-  menpo: http://mirrors.aliyun.com/anaconda/cloud
-  pytorch: http://mirrors.aliyun.com/anaconda/cloud
-  simpleitk: http://mirrors.aliyun.com/anaconda/cloud
+show_channel_urls: true
 ```
 
-清华源
-```config
-channels:
-  - defaults
-show_channel_urls: true
-default_channels:
-  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
-  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
-  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
-custom_channels:
-  conda-forge: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
-  msys2: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
-  bioconda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
-  menpo: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
-  pytorch: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
-  simpleitk: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
+### conda修改虚拟环境安装目录
+
+conda环境默认安装在用户目录`C:\Users\username\.conda\envs`下，如果选择默认路径，那么之后创建虚拟环境，也是安装在用户目录下。不想占用C盘空间，可以修改conda虚拟环境路径。
+
+打开`C:\Users\username\.condarc`文件之后，添加或修改`.condarc` 中的 `env_dirs` 设置环境路径，按顺序第⼀个路径作为默认存储路径，搜索环境按先后顺序在各⽬录中查找。
+
+```text
+envs_dirs:
+  - D:\work\conda-data\envs
+pkgs_dirs:
+  - D:\work\conda-data\pkgs
 ```
+
+### conda中pip源配置
+
+进入conda虚拟环境中，如果使用pip安装比较满，可以配置pip源为国内： `pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple`。
 
 ### conda常用命令如下：
 
