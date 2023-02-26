@@ -447,10 +447,10 @@ def extract_init_json_data(html_content: str, pattern: re.Pattern) -> dict:
 
 def m_get(data: dict, key: str, default=None):
     """
-    用于获取多层级的字典元素
+    用于获取多层级的字典元素，例如 m_get(obj, 'user.name')
     :param data: dict自动
     :param key: key字符串
-    :param default: 默认值
+    :param default: 获取不到时的默认值，默认为None
     """
     keys = key.split('.')
     return rget(data, keys, default)
