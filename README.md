@@ -4,11 +4,11 @@
 
 本项目是`uusama`的个人学习向python实践项目，其中主要包括：
 
-- [python爬虫](./spider/READEME.md)
-- [python常用工具](./tool/README.md)
-- [机器学习深度学习实践]
-- [python自用基本库](./u_base/README.md)
-- [leetcode刷题实现]
+- [python爬虫](./spider)
+- [python常用工具](./tool)
+- [机器学习深度学习实践](./deeplearning)
+- [python自用基本库](./u_base)
+- [leetcode刷题实现](./leetcode)
 
 主要包含各种代码实现以及相关的一些文档。
 
@@ -18,7 +18,7 @@
 
 ### 编码规范
 
-编码尽量遵守Python PEP8规范，命名规范如下：
+编码尽量遵守Python [PEP8规范](https://peps.python.org/pep-0008/)，命名规范如下：
 
 - 项目：首字母大写+大写式驼峰, 如：`PythonPractice`
 - 包、模块、文件：使用小写字母命名，多个单词之间用下划线分隔
