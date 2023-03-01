@@ -1,9 +1,37 @@
-# 基本库实现
+# 基本库使用介绍
 
-常用的基本库。
+## 概述
 
-- log.py: logging 日志封装
-- u_exception.py: 异常类型封装
-- u_platform.py: 平台相关函数
-- unittest.py: 单元测试函数
-- version.py: 关于本库的版本说明
+该文件夹下是常用的基本库列表，基本本项目大部分代码都依赖它，如果要在自己的项目中使用，可以直接把代码copy过去，修改import路径即可。
+
+当前包含的库列表如下：
+
+- `u_log.py: logging` 日志封装，配置文件参考`logging.conf`，可以自行按需修改
+- `u_exception.py`: 异常类型封装
+- `u_platform.py`: 平台相关函数
+- `u_unittest.py`: 单元测试函数
+- `u_file.py`: 文件操作相关
+- `u_time.py`: 关于时间相关的库
+- `version.py`: 关于本库的版本说明
+
+## `u_log.py`
+
+该库封装了日志相关的操作和配置，本身给予python内置的`logging`，其他文件直接使用`import u_base.u_log as log`即可。
+
+包含控制台输出和文件日志输出两个部分，文件日志在python脚本运行的同级目录下回生成`log`文件夹，日志按照日期格式进行组织。
+
+## `u_exception.py`
+
+定义一些常用的异常。
+
+## `u_platform.py`
+
+定义了一些平台判断相关的函数，比如判断是否windows平台等。
+
+## `u_file.py`
+
+该库包含了大部分文件相关的操纵，比如文件遍历，检查，json加载，甚至文件下载等，其中的函数非常丰富，基本平时会复用到的文件相关代码片段都会封装放到这儿。
+
+## `u_time.py`
+
+时间相关函数，比如字符串转时间等。

@@ -2,17 +2,31 @@
 
 ### 说明
 
-本项目是`uusama`的个人学习向python项目，其中主要包括：
+本项目是`uusama`的个人学习向python实践项目，其中主要包括：
 
-- python爬虫
-- python工具
-- 机器学习
-- python基本库
-- leetcode刷题实现
+- [python爬虫](./spider/READEME.md)
+- [python常用工具](./tool/README.md)
+- [机器学习深度学习实践]
+- [python自用基本库](./u_base/README.md)
+- [leetcode刷题实现]
 
-主要包含各种代码实现已经相关的一些文档。
+主要包含各种代码实现以及相关的一些文档。
 
-## 文件结构
+### 使用方式
+
+直接 `git clone https://github.com/youyouzh/PythonPractice.git` 下载代码，安装相应的依赖`pip install requirements`即可运行。
+
+### 编码规范
+
+编码尽量遵守Python PEP8规范，命名规范如下：
+
+- 项目：首字母大写+大写式驼峰, 如：`PythonPractice`
+- 包、模块、文件：使用小写字母命名，多个单词之间用下划线分隔
+- 类、异常：首字母大写+大写式驼峰，一个模块可保护多个类，私有类前缀下划线，如`_PrivateClassExample`
+- 函数、变量：使用小写字母命名，多个单词之间用下划线分隔，私有函数名称需要以下划线开头
+- 常量、全局变量：使用大写字母命名，多个单词之间用下划线分隔，私有常量名称需要以下划线开头
+
+### 文件结构
 
 ```txt
 ├── leetcode        # leetcode 刷题代码
@@ -20,7 +34,7 @@
 ├── spider          # 各种爬虫代码
 ├── tool            # 常用基本工具
 ├── test            # 单元测试库
-└── u_base          # 基本工具库
+└── u_base          # 自用基本工具库
 ```
 
 ## Windows使用conda搭建python环境
@@ -33,8 +47,8 @@
 
 **注意最新版anaconda安装的时候一定要以管理员身份安装，不然安装文件不完整，只有Lib几个文件，就一个_conda.exe，巨坑**。
 
-- `C:\Devlope\anaconda3\Scripts`
-- `C:\Devlope\anaconda3\condabin`
+- `C:\work\anaconda3\Scripts`
+- `C:\work\anaconda3\condabin`
 
 conda离线创建虚拟环境：`conda create -n uusama --clone base`，默认环境中有比较多常用的库，
 
@@ -42,7 +56,7 @@ conda离线创建虚拟环境：`conda create -n uusama --clone base`，默认�
 
 ### conda更换源
 
-conda安装很慢或者安装报网络连接错误时，考虑更换源：
+conda安装很慢或者安装报网络连接错误时，考虑更换国内的源，首选清华的源：
 
 ```bash
 # 清华的源
@@ -59,7 +73,7 @@ conda config --add channels https://developer.aliyun.com/mirror/anaconda/
 conda config --set show_channel_urls yes
 ```
 
-window和linux一样都是修改home目录下的.condarc文件。
+window和linux一样可以通过修改home目录下的`.condarc`文件来直接修改配置，注意这个源的链接配置直接放在`channels`下，网上很多实用`default`的方式有时候不生效。
 
 清华源（首选）
 
@@ -73,6 +87,7 @@ channels:
   - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/fastai/
   - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
   - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/bioconda/
+  - default
 show_channel_urls: true
 ```
 
@@ -83,6 +98,7 @@ channels:
   - http://mirrors.aliyun.com/anaconda/pkgs/main
   - http://mirrors.aliyun.com/anaconda/pkgs/r
   - http://mirrors.aliyun.com/anaconda/pkgs/msys2
+  - default
 show_channel_urls: true
 ```
 
@@ -103,6 +119,8 @@ pkgs_dirs:
 
 进入conda虚拟环境中，如果使用pip安装比较满，可以配置pip源为国内： `pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple`。
 
+单个包安装使用清华源用`-i`选项： `pip install requests -i -i https://pypi.tuna.tsinghua.edu.cn/simple`。
+
 ### conda常用命令如下：
 
 - 虚拟环境列表： `conda env list`
@@ -117,7 +135,6 @@ pkgs_dirs:
 - 升级conda： `conda update conda`
 - 重命名环境名（先克隆后删除）： `conda create -n newname --clone oldname && conda remove -n oldname --all`
 
-
 ### Pycharm配置conda
 
 Pycharm是非常方便的Python相关IDE，可以下载社区免费版本，[PyCharm Community 版本下载地址](https://www.jetbrains.com/pycharm/download/)。
@@ -126,7 +143,7 @@ Pycharm中配置conda环境的方法：
 
 Setting -> Project -> Project Interpreter -> Add -> Conda Environment
 
-选择刚才创建的虚拟环境下`C:\Devlope\anaconda3\envs\uusama`的`Python.exe`即可。
+选择刚才创建的虚拟环境下`C:\work\anaconda3\envs\uusama`的`Python.exe`即可。
 
 ### 常用包功能说明
 
