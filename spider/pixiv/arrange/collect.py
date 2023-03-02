@@ -28,7 +28,7 @@ def update_dir_illust_tag(directory: str, tag: str):
                downloaded： 已经下载的图片
                small: 图片太小
                delete: 直接删除
-               too_long: 太长啦，一帮是那种漫画
+               too_long: 太长啦，一般是那种漫画类
                gray: 黑白插画
     :return: None
     """
