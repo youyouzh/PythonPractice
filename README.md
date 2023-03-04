@@ -75,7 +75,7 @@ conda config --set show_channel_urls yes
 
 window和linux一样可以通过修改home目录下的`.condarc`文件来直接修改配置，注意这个源的链接配置直接放在`channels`下，网上很多实用`default`的方式有时候不生效。
 
-清华源（首选）
+清华源（首选），官方更换方式：<https://mirror.tuna.tsinghua.edu.cn/help/anaconda/>
 
 ```config
 channels:
@@ -134,6 +134,9 @@ pkgs_dirs:
 - 删除所有的安装包及cache： `conda clean -y --all`
 - 升级conda： `conda update conda`
 - 重命名环境名（先克隆后删除）： `conda create -n newname --clone oldname && conda remove -n oldname --all`
+- 已有环境导出： `conda env export --file myenv.yaml --name myenv`
+- 更换环境包： `conda env update -f environment.yaml`
+- 环境导入安装： `conda env create -f myenv.yaml`
 
 ### Pycharm配置conda
 
