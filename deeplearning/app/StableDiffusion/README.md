@@ -29,6 +29,8 @@ Windows平台直接运行`webui-user.bat`即可，注意一定要使用`Python3.
 
 安装后需要等很久，会默认下载很多包，包括基础模型也会下载。如果要替换模型，模型放到`\stable-diffusion-webui\models\Stable-diffusion`即可。
 
+教程参考： <https://zhuanlan.zhihu.com/p/606825889>
+
 ## 模型资源
 
 - [retry比较全的模型](https://rentry.org/sdmodels)
