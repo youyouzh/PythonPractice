@@ -38,6 +38,62 @@ def refactor_test_file(main_dir):
             move_test_file(predict_test_file, main_file_path, main_filename)
 
 
+def batch_modify_java_package_name(root_path, source_package, target_package):
+    """
+    批量修改包名
+    :param root_path: 跟路径
+    :param source_package: 原始包名
+    :param target_package: 修改包名
+    :return:
+    """
+    main_files = u_file.get_all_sub_files_with_cache(root_path)
+    for main_file in main_files:
+        main_file_path = os.path.split(main_file)[0]
+        main_filename = os.path.split(main_file)[1]
+
+        source_package_path = source_package.replace('.', '\\')
+        if not os.path.isfile(main_file):
+            log.warn('The file is not exist: {}'.format(main_file))
+            continue
+
+        if '芋道 Spring Boot' in main_file:
+            log.info('remove file: {}'.format(main_file))
+            os.remove(main_file)
+            continue
+
+        # 替换包名，需要移动文件夹
+        target_package_path = target_package.replace('.', '\\')
+        move_target_path = main_file.replace(source_package_path, target_package_path)
+        move_target_path = move_target_path.replace('\\yudao-spring-boot-starter-', '\\starter-')  # 移动模块名称、
+        move_target_path = move_target_path.replace('\\yudao-', '\\')  # 移动模块名称
+
+        # 包含包名的java文件，还有pom.xml
+        if source_package_path not in main_file_path and 'pom.xml' not in main_file:
+            log.info('move file from: {} -> {}'.format(main_file, move_target_path))
+            if main_file != move_target_path:
+                u_file.ready_dir(move_target_path)
+                os.replace(main_file, move_target_path)  # 原样移动文件
+            continue
+
+        if '.java' in main_file or '.sql' in main_file:
+            # java class文件替换包名称
+            log.info('move file from: {} -> {}'.format(main_file, move_target_path))
+            u_file.copy_file_with_replacer(main_file, move_target_path,
+                                           lambda x: x.replace(source_package, target_package), True)
+            continue
+        if 'pom.xml' in main_file:
+            # maven文件中的模块替换
+            log.info('move file from: {} -> {}'.format(main_file, move_target_path))
+            u_file.copy_file_with_replacer(main_file, move_target_path, lambda x: x.replace('cn.iocoder.boot', 'com.uusama')
+                                           # .replace('spring-boot-starter-', 'starter-')
+                                           .replace('<artifactId>yudao</artifactId>', '<artifactId>ulife</artifactId>')
+                                           .replace('yudao-spring-boot-starter-', 'starter-')
+                                           .replace('yudao-', '')
+                                           , True)
+            continue
+        log.info('ignore file: {}'.format(main_file))
+
+
 def move_test_file(predict_test_file, main_file_path, main_filename):
     """
     移动测试文件
@@ -225,4 +281,5 @@ def clear_log(root_path):
 
 if __name__ == "__main__":
     # modify_picture_suffix(r'D:\WeiXin')
-    add_jpg_suffix()
+    # add_jpg_suffix()
+    batch_modify_java_package_name(r'D:\work\github\ULife', 'cn.iocoder.yudao', 'com.uusama.ulife')
