@@ -499,3 +499,30 @@ def get_file_meta(file_name: str) -> dict:
         'filename': filename,
         'suffix': suffix
     }
+
+
+def copy_file_with_replacer(source_path, target_path, content_replacer, delete_source=False) -> bool:
+    """
+    将文件进行拷贝，同时替换文件内容
+    :param source_path: 原始文件路径
+    :param target_path: 拷贝文件路径
+    :param content_replacer: 内容替换函数
+    :param delete_source: 删除原文件
+    :return: bool: true表示成功处理
+    """
+    if not os.path.isfile(source_path):
+        log.warn('The file is not exist: '.format(source_path))
+        return False
+    ready_dir(target_path)
+    with open(source_path, 'r+', encoding='utf-8') as file_handle:
+        content = file_handle.read()
+        content = content_replacer(content)
+        if source_path == target_path:
+            # 同一个文件，只处理替换，并不删除
+            file_handle.seek(0)
+            file_handle.write(content)
+            return True
+        with open(target_path, 'w', encoding='utf-8') as out_handle:
+            out_handle.write(content)
+    if delete_source:
+        os.remove(source_path)
