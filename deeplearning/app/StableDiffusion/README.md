@@ -21,47 +21,84 @@
 
 ## 本地安装`stable-diffusion-webui`
 
-参考github: <https://github.com/Stability-AI/stablediffusion>。
+上面的安装方法比较原生，使用起来不方便，有大佬做了WebUI界面版的`Stable Diffusion`，参考github: <https://github.com/Stability-AI/stablediffusion>。将安装过程全部简化：
 
-首先clone代码： `git clone https://github.com/Stability-AI/stablediffusion.git`。
+1. 首先clone代码： `git clone https://github.com/Stability-AI/stablediffusion.git`，然后渠道代码路径
+2. Windows平台直接运行`webui-user.bat`即可，注意一定要使用`Python3.10`以下版本，否则安装会报找不到包的错误
+3. 安装需要等很久，会默认下载很多包，包括基础模型也会下载，安装以后会在本地打开webui也没
 
-Windows平台直接运行`webui-user.bat`即可，注意一定要使用`Python3.10`以下版本，否则安装会包找不到包的错误。
+如果要替换模型，模型放到`\stable-diffusion-webui\models\Stable-diffusion`即可。
 
-安装后需要等很久，会默认下载很多包，包括基础模型也会下载。如果要替换模型，模型放到`\stable-diffusion-webui\models\Stable-diffusion`即可。
+本身的WebUI界面非常容易直观，常用的有通过文本生成图片，图片生成图片，局部重绘等。
 
-教程参考： <https://zhuanlan.zhihu.com/p/606825889>
+### 渲染参数说明
+
+- CheckPoint文件（.ckpt）：基准模型，比如写实模型，动漫模型
+- CFG强度：对Prompt的拟合强度，一般4-7就可以，某些情况下可能需要很大
+- 迭代步数（sampling steps）一般在20~40左右
+- 采样器（采样方法Sampler）一般选择第一个`默认值Euler a`，特殊情况下会用到其他
+- 批次：一次生成多少张图
+- 每批数量：单个批次里生成多少张图片
+
+### 模型安装
+
+- 底模型（比较大，一般2G-7G）
+  - 常见格式： `ckpt`，`safetensors`
+  - 存放路径：`\models\Stable-diffusion`
+  - 切换方法：点击UI界面左上角可以切换模型，切换时注意需要等一会儿等待模型加载。
+- embeddings模型（一般几十kb）
+  - 常见格式： `pt`
+  - 存放路径：`\embeddings`
+  - 作用：通过角色训练产出，能让主模型识别某个指定角色
+  - 切换方法：UI界面Show Extra Info后，通过`Textual Inversion`切换
+- Hypernetwork模型（一般几十kb）
+  - 常见格式： `pt`
+  - 存放路径：`\models\hypernetwork`
+  - 作用：通过画风训练产出，能指定特定的画风
+  - 切换方法：UI界面Show Extra Info后，通过`Hypernetwork`切换
+- Lora模型（一般100Mb左右）
+  - 常见格式： `ckpt`，`safetensors`，`pt`
+  - 存放路径：`\models\lora`，使用插件时需要放在`\extensions\sd-webui-additional-networks\models\lora`
+  - 作用：通过Lora训练产出，用于角色训练
+
+注意模型一定要配置配套的`vae`模型，否则图片会发灰等。
+
+### 插件安装
+
+插件存放路径`\extensions`，可手动安装，也可在WebUI上的`extension`部分安装。
+
+### embedding训练方法
+
+- 一阶段：（学习率：0.02），（批次：4），（分辨率：256），（步数：2000）
+- 二阶段：（学习率：0.01），（批次：2），（分辨率：384），（步数：2000）
+- 三阶段：（学习率：0.005），（批次：1），（分辨率：512），（步数：10000）
+
+安装目录下`train`目录，新建文件夹放入训练图片，可以写个脚本用`PIL`把图片尺寸修改，自动创建文件夹和放置训练素材。
+
+- `\ha_tag_256\ha_tag_in`，`\ha_tag_256\ha_tag_out`
+- `\ha_tag_384\ha_tag_in`，`\ha_tag_384\ha_tag_out`
+- `\ha_tag_512\ha_tag_in`，`\ha_tag_512\ha_tag_out`
+
+在webUI页面，训练，图像预处理，填入素材`ha_tag_in`和`ha_tag_out`，并设置相应尺寸，预处理。训练日志：`\textual_inversion\data\images`。
+
+参考：<https://www.bilibili.com/video/BV1xv4y1v7zH/>
 
 ## 模型资源
 
-- [retry比较全的模型](https://rentry.org/sdmodels)
+常用的模型资源下载地址如下
+
 - [HuggingFace的Stable Diffusion模型分区](https://huggingface.co/models?other=stable-diffusion)
 - [Civitai](https://civitai.com/)
+- [retry比较全的模型](https://rentry.org/sdmodels)
 - [Huggingface TI分区](https://cyberes.github.io/stable-diffusion-textual-inversion-models/)
 - [Discord&TG&Reddit电报模型分享群](https://discord.com/channels/1038249716149928046/1042829185078546432)
 - [reddit的 stable diffusion 社区](https://www.reddit.com/r/StableDiffusion/)
 
-### 动漫绘图模型
-
-- nice.ckpt [2c13a9f1]
-  - 偏真实cg风格，出图视频：https://www.bilibili.com/video/BV1j84y1k78D/
-  - 下载地址：https://huggingface.co/elontrump/nice/resolve/main/nice.ckpt
-- momoko-e.ckpt [a2a802b2]
-  - 画师：ももこ https://www.pixiv.net/users/1113943
-  - 下载地址：https://huggingface.co/zxsq/momoko-e/resolve/main/momoko-e.ckpt
-
-## ControlNet
+### ControlNet
 
 - 预处理模型安装地址：主目录\extensions\sd-webui-controlnet\annotator
 - Controlnet模型下载地址：https://huggingface.co/webui/ControlNet-modules-safetensors/tree/main
 - Controlnet模型安装地址：主目录\extensions\sd-webui-controlnet\models
-
-## 渲染参数说明
-
-- CheckPoint文件（.ckpt）：基准模型，比如写实模型，动漫模型
-- CFG强度：对Prompt的拟合强度，推荐采用15
-- 迭代次数与分辨率：默认的20次迭代、512x512分辨率
-- 采样方法： 动漫使用`默认值Euler a`，写实使用`DPM++ SED Karrans`
-- 随机种子
 
 ## Prompt指南
 
@@ -120,19 +157,55 @@ prompt规则：
   - 腰动作（弯腰，跨坐，鸭子坐，鞠躬），
   - 腿动作（交叉站，二郎腿，M形开腿，盘腿，跪坐），
   - 复合动作（战斗姿态，JOJO立，背对背站，脱衣服）
-- 背景：室内，室外，树林，沙滩，星空下，太阳下，天气如何
+- 背景：室内，室外，树林，沙滩，星空下，太阳下，天气如何，光影，粒子
 - 杂项：比如NSFW，眼睛描绘详细
 
 ### Prompt收集
 
+- 通用前摇： masterpiece,best quality,official art,extremely detailed CG unity 8k wallpaper,highly detailed,illustration
 - 正向: masterpiece, best quality, 更多画质词，画面描述
 - 反向：lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry
 - nsfw（not safe for work＝涩图）
 
-### Tag记录
+### 负面tag集合
 
-- 好的画质：
-- 特写镜头：closeup
+lowres, ((bad anatomy)), ((bad hands)), text, missing finger, extra digits, fewer digits, blurry, ((mutated hands and fingers)), 
+(poorly drawn face), ((mutation)), ((deformed face)), (ugly), ((bad proportions)), ((extra limbs)), extra face, (double head), 
+(extra head), ((extra feet)), monster, logo, cropped, worst quality, low quality, normal quality, jpeg, humpbacked, long body, 
+long neck, ((jpeg artifacts)),(mutated hands and fingers:1.5 ),(mutation, poorly drawn :1.2), (long body :1.3), (mutation, poorly drawn :1.2),
+(breasts:1.4), liquid body, text font ui, long neck, uncoordinated body,fused ears,huge,ugly,
+[:(one hand with more than 5 fingers, one hand with less than 5 fingers):0.8]
+[:(mutated hands and fingers,one hand with more than 5 fingers, one hand with less than 5 fingers):0.8],multiple breasts, 
+(mutated hands and fingers:1.5 ), (long body :1.3), (mutation, poorly drawn :1.2) , black-white, bad anatomy, liquid body, 
+liquid tongue, disfigured, malformed, mutated, anatomical nonsense, text font ui, error, malformed hands, long neck, blurred, 
+lowers, lowres, bad anatomy, bad proportions, bad shadow, uncoordinated body, unnatural body, fused breasts, bad breasts, 
+huge breasts, poorly drawn breasts, extra breasts, liquid breasts, heavy breasts, missing breasts, huge haunch, huge thighs, 
+huge calf, bad hands, fused hand, missing hand, disappearing arms, disappearing thigh, disappearing calf, disappearing legs, 
+fused ears, bad ears, poorly drawn ears, extra ears, liquid ears, heavy ears, missing ears, fused animal ears, bad animal ears, 
+poorly drawn animal ears, extra animal ears, liquid animal ears, heavy animal ears, missing animal ears, text, ui, error, 
+missing fingers, missing limb, fused fingers, one hand with more than 5 fingers, one hand with less than 5 fingers, 
+one hand with more than 5 digit, one hand with less than 5 digit, extra digit, fewer digits, fused digit, missing digit, 
+bad digit, liquid digit, colorful tongue, black tongue, cropped, watermark, username, blurry, JPEG artifacts, signature, 
+3D, 3D game, 3D game scene, 3D character, malformed feet, extra feet, bad feet, poorly drawn feet, fused feet, missing feet, 
+extra shoes, bad shoes, fused shoes, more than two shoes, poorly drawn shoes, bad gloves, poorly drawn gloves, fused gloves, 
+bad cum, poorly drawn cum, fused cum, bad hairs, poorly drawn hairs, fused hairs, big muscles, ugly, bad face, fused face, 
+poorly drawn face, cloned face, big face, long face, bad eyes, fused eyes poorly drawn eyes, extra eyes, malformed limbs, 
+more than 2 nipples,missing nipples, different nipples, fused nipples, bad nipples, poorly drawn nipples, black nipples, 
+colorful nipples, gross proportions. short arm, (((missing arms))), missing thighs, missing calf, missing legs, mutation, 
+duplicate, morbid, mutilated, poorly drawn hands, more than 1 left hand, more than 1 right hand, deformed, (blurry), 
+disfigured, missing legs, extra arms, extra thighs, more than 2 thighs, extra calf, fused calf, extra legs, bad knee, 
+extra knee, more than 2 legs, bad tails, bad mouth, fused mouth, poorly drawn mouth, bad tongue, tongue within mouth, 
+too long tongue, black tongue, big mouth, cracked mouth, bad mouth, dirty face, dirty teeth, dirty pantie, fused pantie, 
+poorly drawn pantie, fused cloth, poorly drawn cloth, bad pantie, yellow teeth, thick lips, bad cameltoe, colorful cameltoe, 
+bad asshole, poorly drawn asshole, fused asshole, missing asshole, bad anus, bad pussy, bad crotch, bad crotch seam, 
+fused anus, fused pussy, fused anus, fused crotch, poorly drawn crotch, fused seam, poorly drawn anus, poorly drawn pussy, 
+poorly drawn crotch, poorly drawn crotch seam, bad thigh gap, missing thigh gap, fused thigh gap, liquid thigh gap, 
+poorly drawn thigh gap, poorly drawn anus, bad collarbone, fused collarbone, missing collarbone, liquid collarbone, 
+strong girl, obesity, worst quality, low quality, normal quality, liquid tentacles, bad tentacles, poorly drawn tentacles, 
+split tentacles, fused tentacles, missing clit, bad clit, fused clit, colorful clit, black clit, liquid clit, QR code, bar code, 
+censored, safety panties, safety knickers, beard, furry ,pony, pubic hair, mosaic, excrement, faeces, shit, futa, testis
+
+魔法宝典： <https://docs.qq.com/doc/DWHl3am5Zb05QbGVs>
 
 ## 好的prompt记录
 
@@ -145,3 +218,4 @@ prompt规则：
 - 娃娃脸： <https://civitai.com/models/9387/sen-senchan25-twitter-girl>，权重低于0.5效果好
 
 最高画质，杰作，精美的cg，萝莉正脸，微笑，可爱精致的鼻子，精致的嘴唇，银色长发，蓝色瞳孔，光影背景，超高清，16K
+https://www.bilibili.com/read/cv21481045?from=articleDetail
