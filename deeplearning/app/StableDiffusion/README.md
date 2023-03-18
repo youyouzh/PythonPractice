@@ -100,6 +100,13 @@
 - Controlnet模型下载地址：https://huggingface.co/webui/ControlNet-modules-safetensors/tree/main
 - Controlnet模型安装地址：主目录\extensions\sd-webui-controlnet\models
 
+### 常用插件
+
+在主页面，Extension， Install From Url可以从网址安装插件。
+
+- [中文汉化插件](https://github.com/dtlnor/stable-diffusion-webui-localization-zh_CN)，安装后在`Settings -> User Interface`设置项最后面选择Language
+- [图片放大插件](https://github.com/pkuliyi2015/multidiffusion-upscaler-for-automatic1111)，可以放大图片
+
 ## Prompt指南
 
 标签超市： <https://tags.novelai.dev/>。
