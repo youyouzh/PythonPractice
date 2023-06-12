@@ -4,6 +4,7 @@
 
 
 import os
+import subprocess
 import time
 import json
 import re
@@ -291,7 +292,7 @@ def download_file(url, filename, path=os.path.curdir, replace=False, with_progre
             kwargs['headers']['user-agent'] = COMMON_USER_AGENT
         response = requests.get(url, stream=True, **kwargs)
         if response.status_code != 200:
-            log.error('download file success. url: {}, code: {}'.format(url, response.status_code))
+            log.error('download file fail. code: {}, url: {}, '.format(response.status_code, url))
             return False
         if with_progress:
             # 带进度打印日志，控制台可以使用 tqdm 包实现
@@ -530,3 +531,42 @@ def copy_file_with_replacer(source_path, target_path, content_replacer, delete_s
             out_handle.write(content)
     if delete_source:
         os.remove(source_path)
+
+
+def escape_argument(arg):
+    # Escape the argument for the cmd.exe shell.
+    # See https://learn.microsoft.com/en-us/archive/blogs/twistylittlepassagesallalike/everyone-quotes-command-line-arguments-the-wrong-way
+    #
+    # First we escape the quote chars to produce a argument suitable for
+    # CommandLineToArgvW. We don't need to do this for simple arguments.
+
+    if not arg or re.search(r'(["\s])', arg):
+        arg = '"' + arg.replace('"', r'\"') + '"'
+
+    return escape_for_cmd_exe(arg)
+
+
+def escape_for_cmd_exe(arg):
+    # Escape an argument string to be suitable to be passed to
+    # cmd.exe on Windows
+    #
+    # This method takes an argument that is expected to already be properly
+    # escaped for the receiving program to be parsed by it. This argument
+    # will be further escaped to pass the interpolation performed by cmd.exe
+    # unchanged.
+    #
+    # Any meta-characters will be escaped, removing the ability to e.g. use
+    # redirects or variables.
+    #
+    # @param arg [String] a single command line argument to escape for cmd.exe
+    # @return [String] an escaped string suitable to be passed as a program
+    #   argument to cmd.exe
+    meta_re = re.compile(r'([()%!^"<>&|])')
+    return meta_re.sub('^\1', arg)
+
+
+def run_command(command):
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    for line in process.stdout:
+        line = line.rstrip().decode('utf-8')
+        print(">>>", line)
