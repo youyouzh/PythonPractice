@@ -89,6 +89,7 @@ def covert_url_to_filename(url, with_domain=True, with_path=True, with_md5=False
         file_name += parse_result.path
     file_name += parse_result.query
     file_name = convert_windows_path(file_name)
+    file_name = file_name[:255]
     return file_name
 
 
@@ -128,7 +129,7 @@ def get_content_with_cache(url: str, cache_file: str = None, use_cache=True, enc
             log.info('load content from cache: {}'.format(cache_file))
             return read_content(cache_file)
     html_content = get_content(url, encoding, **kwargs)
-    if html_content:
+    if html_content and use_cache:
         ready_dir(cache_file)
         write_content(cache_file, html_content)
     return html_content
@@ -162,12 +163,15 @@ def get_content(path, encoding=None, retry=0, **kwargs):
         kwargs['headers'] = default_headers
 
         response = requests.get(path, timeout=60, **kwargs)
-        if encoding is not None:
+        if encoding is not None and not kwargs.get('stream', None):
             response.encoding = encoding
 
         log.info('end get info from web url: ' + path)
         if not (400 <= response.status_code < 500):
             response.raise_for_status()
+        if kwargs.get('stream', None):
+            # stream二进制类型
+            return response.content
         if response.text is None or response.text == '':
             log.error('The response text is empty.')
         return response.text
