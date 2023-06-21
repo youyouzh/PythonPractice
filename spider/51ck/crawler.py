@@ -1,20 +1,20 @@
 import re
-import shutil
 import os
 import json
 
-from typing import List
+
+from Crypto.Util.Padding import pad
 from bs4 import BeautifulSoup
 
 import u_base.u_file as u_file
 import u_base.u_log as log
+from m3u8_video_crawler import download_with_m3u8_url
 from Crypto.Cipher import AES  # pip install pycryptodome
 from urllib.parse import urlparse, urljoin
-from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 
 _REQUESTS_KWARGS = {
     # 'proxies': {
-    #   'https': 'http://127.0.0.1:1080',  # use proxy
+    #   'socks': 'http://127.0.0.1:1080',  # use proxy
     # },
     # 'verify': False,
 
@@ -29,28 +29,7 @@ _REQUESTS_KWARGS = {
         'sec-fetch-site': 'same-site'
     }
 }
-POOL_SIZE = 10
 MEMORY_CACHE = {}   # 全局内存缓存
-
-
-def get_ts_save_dir(m3u8_url: str):
-    """
-    根据资源路径生成保存文件夹路径
-    :param m3u8_url: m3u8 url
-    :return: 保存文件夹名
-    """
-    save_dir = os.path.join(r'result\ts', u_file.covert_url_to_filename(m3u8_url))
-    u_file.ready_dir(save_dir, True)
-    return save_dir
-
-
-def get_ts_download_filename(ts_url: str):
-    """
-    统一获取ts文件下载保存文件名称
-    :param ts_url: ts下载地址
-    :return: 文件名
-    """
-    return u_file.get_file_name_from_url(ts_url)
 
 
 def crawl_video_info(template_page_url: str):
@@ -107,85 +86,6 @@ def extract_m3u8_url(html_content: str) -> str or None:
     return json_data['url']
 
 
-def extract_ts_urls(m3u8_url: str) -> List[str]:
-    """
-    查询m3u8_url，获取所有视频片段ts的下载地址
-    :param m3u8_url: m3u8视频流地址
-    :return: ts下载地址列表
-    """
-    # m3u8 cache file path
-    cache_file = os.path.join(r'result\m3u8', u_file.covert_url_to_filename(m3u8_url))
-
-    # extract full ts file urls
-    response = u_file.get_content_with_cache(m3u8_url, cache_file, **_REQUESTS_KWARGS)
-    if response[0:1] == '[':
-        ts_urls = json.loads(response)
-    else:
-        lines = response.split('\n')
-        ts_urls: List[str] = [urljoin(m3u8_url, line.rstrip()) for line in lines if '.ts' in line.rstrip()]
-    if len(ts_urls) == 0:
-        log.error('extract ts urls failed.')
-        return []
-
-    log.info('total ts urls size: {}'.format(len(ts_urls)))
-    return ts_urls
-
-
-def download_ts_file_with_pool(m3u8_url: str, ts_urls: List[str]):
-    """
-    多线程线程池下载视频分片ts文件
-    :param m3u8_url:
-    :param ts_urls:
-    :return:
-    """
-    save_dir = get_ts_save_dir(m3u8_url)
-    log.info('download ts file with pool.')
-    pool = ThreadPoolExecutor(POOL_SIZE)
-    tasks = []
-    for ts_url in ts_urls:
-        file_name = get_ts_download_filename(ts_url)
-        future = pool.submit(u_file.download_file, ts_url, file_name, save_dir, **_REQUESTS_KWARGS)
-        tasks.append(future)
-
-    # 等待所有线程完成
-    wait(tasks, return_when=ALL_COMPLETED)
-    log.info('all ts file download success.')
-
-
-def merge_ts_file(m3u8_url: str, ts_urls: List, video_name: str, decrypt_function=None):
-    """
-    合并视频分片ts文件
-    :param m3u8_url: 视频流地址
-    :param ts_urls: 按照顺序拍好的片段下载地址列表
-    :param video_name: 视频名称
-    :param decrypt_function: ts文件解密算法
-    :return:
-    """
-    merge_file_path = os.path.join(r'result\video', video_name + '.mp4')
-    u_file.ready_dir(merge_file_path)
-    merge_file_handle = open(merge_file_path, 'wb')
-
-    ts_dir = get_ts_save_dir(m3u8_url)
-    for ts_url in ts_urls:
-        # 按照ts_url的顺序依次查找文件并进行拼接
-        ts_filename = get_ts_download_filename(ts_url)
-        ts_filepath = os.path.join(ts_dir, ts_filename)
-        if not os.path.isfile(ts_filepath):
-            log.error('This ts file is not exist. cannot merge.')
-            return
-
-        ts_file_handle = open(ts_filepath, 'rb')
-        ts_file_content = ts_file_handle.read()
-        if decrypt_function is not None:
-            # if defined decrypt function, decrypt the data
-            ts_file_content = decrypt_function(m3u8_url, ts_file_content)
-        shutil.copyfileobj(ts_file_handle, merge_file_handle)
-        merge_file_handle.write(ts_file_content)
-        ts_file_handle.close()
-    merge_file_handle.close()
-    log.info('merge file success: {}'.format(merge_file_path))
-
-
 def download_by_page_url(page_url: str):
     """
     下载 hscangku.com 指定页面视频
@@ -201,18 +101,6 @@ def download_by_page_url(page_url: str):
     title = search_content.group(1).strip()
 
     download_with_m3u8_url(title, m3u8_url)
-
-
-def download_with_m3u8_url(title, m3u8_url, decrypt_function=None):
-    """
-    下载m3u8视频
-    :param title: 视频标题，用于保存文件名
-    :param m3u8_url: m3u8视频地址
-    :param decrypt_function: 如果视频流有加密，需要提供解密算法
-    """
-    ts_urls = extract_ts_urls(m3u8_url)
-    download_ts_file_with_pool(m3u8_url, ts_urls)
-    merge_ts_file(m3u8_url, ts_urls, title, decrypt_function)
 
 
 def decrypt_aes(m3u8_url: str, encrypt_data):
@@ -245,7 +133,55 @@ def decrypt_aes(m3u8_url: str, encrypt_data):
     return decrypt_data.rstrip(b'\0')
 
 
+def decrypt_aes_jable_tv(m3u8_url: str, encrypt_data):
+    # jable.tv 解密
+    if 'aes-key' not in MEMORY_CACHE:
+        # 缓存数据，避免每次都调用
+        cache_file = os.path.join(r'result\m3u8', u_file.covert_url_to_filename(m3u8_url))
+        response = u_file.get_content_with_cache(m3u8_url, cache_file, **_REQUESTS_KWARGS)
+        decrypt_content_regex = re.compile(r'EXT-X-KEY:METHOD=AES-128,URI="(\w+.ts)",IV=0x(\w+)')
+        search_result = decrypt_content_regex.search(response)
+        if not search_result or not search_result.groups():
+            log.error('can not fin decrypt content from response.')
+            return
+        decrypt_key_url = urljoin(m3u8_url, search_result.groups()[0])
+        key = u_file.get_content_with_cache(decrypt_key_url, stream=True, use_cache=False)
+        # key = b'\x07\xe3\x17]\xddW|\xa1\xe2f&\x91+\xf6\x82\xfc'
+        # iv = hex(int(search_result.groups()[1], 16))
+        iv = search_result.groups()[1]
+        iv = bytes.fromhex(iv)
+        MEMORY_CACHE['aes-key'] = key
+        MEMORY_CACHE['aes-iv'] = iv
+    else:
+        key = MEMORY_CACHE.get('aes-key')
+        iv = MEMORY_CACHE.get('aes-iv')
+
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    if len(encrypt_data) % 16 != 0:
+        # Data must be padded to 16 byte boundary in CBC mode
+        # 长度填充
+        encrypt_data = pad(encrypt_data, 16)
+    decrypt_data = cipher.decrypt(encrypt_data)
+
+    return decrypt_data.rstrip(b'\0')
+
+
+def try_decrypt_ts_file():
+    ts_filepath = r'G:\Projects\Python_Projects\python-base\spider\51ck\result\ts\hoyo-toba.mushroomtrack.com-hls-_nhTPd395KOq9XLnwJ8mFQ-1686335938-18000-18526-18526.m3u8\185261.ts'
+    m3u8_url = 'https://hoyo-toba.mushroomtrack.com/hls/_nhTPd395KOq9XLnwJ8mFQ/1686335938/18000/18526/18526.m3u8'
+    ts_file_handle = open(ts_filepath, 'rb')
+    ts_file_content = ts_file_handle.read()
+
+    decrypt_ts_filepath = r'result\decrypt_ts-2.ts'
+    decrypt_ts_handle = open(decrypt_ts_filepath, 'wb')
+
+    decrypt_file_content = decrypt_aes_jable_tv(m3u8_url, ts_file_content)
+    decrypt_ts_handle.write(decrypt_file_content)
+    ts_file_handle.close()
+    decrypt_ts_handle.close()
+
+
 if __name__ == '__main__':
-    download_by_page_url('http://645ck.cc/vodplay/16553-1-1.html')
+    # download_by_page_url('http://645ck.cc/vodplay/16553-1-1.html')
     # crawl_video_info('http://666386.xyz/vodtype/15-{}.html')
-    # decrypt_aes()
+    try_decrypt_ts_file()
