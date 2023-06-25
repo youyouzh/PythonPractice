@@ -56,7 +56,7 @@ conda离线创建虚拟环境：`conda create -n uusama --clone base`，默认�
 
 ### conda更换源
 
-conda安装很慢或者安装报网络连接错误时，考虑更换国内的源，首选清华的源：
+conda安装很慢或者安装报网络连接错误时，考虑更换国内的源，首选清华的源，注意更换源后更新缓存`conda clean -i`，保证用的是镜像站提供的索引。
 
 ```bash
 # 清华的源
@@ -75,7 +75,18 @@ conda config --set show_channel_urls yes
 
 window和linux一样可以通过修改home目录下的`.condarc`文件来直接修改配置，注意这个源的链接配置直接放在`channels`下，网上很多实用`default`的方式有时候不生效。
 
-清华源（首选），官方更换方式：<https://mirror.tuna.tsinghua.edu.cn/help/anaconda/>
+清华源（首选），官方更换方式：<https://mirror.tuna.tsinghua.edu.cn/help/anaconda/>，如果报错，则尝试修改`https`为`http`即可。
+
+```log 
+Collecting package metadata (current_repodata.json): failed
+
+CondaHTTPError: HTTP 000 CONNECTION FAILED for url <https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/win-64/current_repodata.json>
+Elapsed: -
+
+An HTTP error occurred when trying to retrieve this URL.
+HTTP errors are often intermittent, and a simple retry will get you on your way.
+'https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/win-64'
+```
 
 ```config
 channels:
@@ -100,6 +111,32 @@ channels:
   - http://mirrors.aliyun.com/anaconda/pkgs/msys2
   - default
 show_channel_urls: true
+```
+
+完整的`.condarc`文件参考如下：
+
+```config
+channels:
+  - defaults
+show_channel_urls: true
+default_channels:
+  - http://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+  - http://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+  - http://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
+custom_channels:
+  conda-forge: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
+  msys2: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
+  bioconda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
+  menpo: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
+  pytorch: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
+  pytorch-lts: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
+  simpleitk: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud
+ssl_verify: false
+remote_read_timeout_secs: 5000.0
+envs_dirs:
+  - D:\work\conda-data\envs
+pkgs_dirs:
+  - D:\work\conda-data\pkgs
 ```
 
 ### conda修改虚拟环境安装目录
