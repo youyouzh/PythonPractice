@@ -18,7 +18,7 @@ _REQUESTS_KWARGS = {
     # 下面的header适用于 https://www.xvideos.com/
     # 'verify': False,  # 必须关闭
     'headers': {
-        'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',
+        'sec-ch-ua': '"Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': 'Windows',
         'sec-fetch-dest': 'empty',
@@ -26,7 +26,7 @@ _REQUESTS_KWARGS = {
         'sec-fetch-site': 'same-site'
     }
 }
-POOL_SIZE = 4
+POOL_SIZE = 8
 MEMORY_CACHE = {}   # 全局内存缓存
 
 
@@ -87,9 +87,20 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir):
     pool = ThreadPoolExecutor(POOL_SIZE)
     tasks = []
     for ts_url in ts_urls:
-        file_name = u_file.get_file_name_from_url(ts_url)
-        future = pool.submit(u_file.download_file, ts_url, file_name, save_dir, **_REQUESTS_KWARGS)
+        filename = u_file.get_file_name_from_url(ts_url)
+        future = pool.submit(u_file.download_file, ts_url, filename, save_dir, **_REQUESTS_KWARGS)
         tasks.append(future)
+
+    # 检查是否所有文件都下载完成，并记录未完成下载的ts_url
+    not_finished_ts_urls = []
+    for ts_url in ts_urls:
+        filename = u_file.get_file_name_from_url(ts_url)
+        if not os.path.isfile(filename):
+            not_finished_ts_urls.append(ts_url)
+
+    # 递归下载未完成的ts_url
+    log.info('not finished ts_urls size: {}, retry again.'.format(len(not_finished_ts_urls)))
+    download_with_m3u8_url(not_finished_ts_urls, save_dir)
 
     # 等待所有线程完成
     wait(tasks, return_when=ALL_COMPLETED)
@@ -171,4 +182,5 @@ def download_with_m3u8_url(title, m3u8_url):
 
 
 if __name__ == '__main__':
-    download_with_m3u8_url('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=x11012.m3u8')
+    POOL_SIZE = 5
+    download_with_m3u8_url('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=11012.m3u8')
