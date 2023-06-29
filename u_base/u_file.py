@@ -69,11 +69,12 @@ def get_file_name_from_url(url):
     return urllib.parse.unquote(file_name)
 
 
-def covert_url_to_filename(url, with_domain=True, with_path=True, with_md5=False):
+def covert_url_to_filename(url, with_domain=True, with_path=True, with_query=False, with_md5=False):
     """
     将url转化为文件名，一帮用于缓存文件生成
     :param with_domain: 文件名加上域名
     :param with_path: 文件名加上请求路径
+    :param with_query: 文件名加上查询参数
     :param with_md5: 对url使用md5
     :param url: url
     :return: filename
@@ -88,7 +89,8 @@ def covert_url_to_filename(url, with_domain=True, with_path=True, with_md5=False
         file_name += parse_result.netloc
     if with_path:
         file_name += parse_result.path
-    file_name += parse_result.query
+    if with_query:
+        file_name += parse_result.query
     file_name = convert_windows_path(file_name)
     file_name = file_name[:255]
     return file_name
@@ -168,8 +170,10 @@ def get_content(path, encoding=None, retry=0, **kwargs):
             response.encoding = encoding
 
         log.info('end get info from web url: ' + path)
-        if not (400 <= response.status_code < 500):
+        if response.status_code != 200:
+            log.error('The response status is invalid. code: {}, content: {}'.format(response.status_code, response.content))
             response.raise_for_status()
+            return False
         if kwargs.get('stream', None):
             # stream二进制类型
             return response.content
