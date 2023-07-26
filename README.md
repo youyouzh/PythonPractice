@@ -6,7 +6,6 @@
 
 - [python爬虫](./spider)
 - [python常用工具](./tool)
-- [机器学习深度学习实践](./deeplearning)
 - [python自用基本库](./u_base)
 - [leetcode刷题实现](./leetcode)
 
@@ -30,7 +29,6 @@
 
 ```txt
 ├── leetcode        # leetcode 刷题代码
-├── deeplearning    # 深度学习相关代码和文档
 ├── spider          # 各种爬虫代码
 ├── tool            # 常用基本工具
 ├── test            # 单元测试库
