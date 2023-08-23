@@ -8,8 +8,7 @@ ROTATION = 0
 INFINITE = 1
 
 
-logging_instance = logging.getLogger()
-logger = logging_instance
+logger = logging.getLogger()
 
 
 def init_default_log(name='log-'):
@@ -18,13 +17,14 @@ def init_default_log(name='log-'):
     if not os.path.isdir(log_path):
         os.makedirs(log_path)
     log_path = os.path.join(log_path, name + time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time())) + '.log')
-    config_file_logger(logging.INFO, log_path, print_console=True)
+    config_file_logger(logger, logging.INFO, log_path, print_console=True)
 
 
-def config_file_logger(log_level, log_file, log_type=ROTATION,
+def config_file_logger(logging_instance, log_level, log_file, log_type=ROTATION,
                        max_size=1073741824, print_console=True, generate_wf_file=False):
     """
     config logging instance
+    :param logging_instance: logger实例
     :param log_level: the log level
     :param log_file: log file path
     :param log_type:
@@ -40,14 +40,6 @@ def config_file_logger(log_level, log_file, log_type=ROTATION,
     :param generate_wf_file: Decide whether or not decide warning or fetal log file
     :return: none
     """
-    # if not log file path, create dir
-    if not os.path.exists(log_file):
-        try:
-            os.mknod(log_file)
-        except IOError:
-            # create exception
-            raise Exception('log file does not exist.  try to create it. but file creation failed')
-
     # config object property
     logging_instance.setLevel(log_level)
 
