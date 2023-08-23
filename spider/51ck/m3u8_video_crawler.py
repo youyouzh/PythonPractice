@@ -17,17 +17,24 @@ _REQUESTS_KWARGS = {
 
     # 下面的header适用于 https://www.xvideos.com/
     # 'verify': False,  # 必须关闭
+    # https://missav.com/ header 必须包含Referer
     'headers': {
-        'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/114.0.0.0 Safari/537.36',
+        'sec-ch-ua': '"Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"',
+        'Referer': 'https://missav.com/inct-006',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': 'Windows',
         'sec-fetch-dest': 'empty',
         'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-site'
+        'sec-fetch-site': 'cross-site'
     }
 }
-POOL_SIZE = 4
+POOL_SIZE = 8
 MEMORY_CACHE = {}   # 全局内存缓存
+DOWNLOAD_VIDEOS = [
+('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=11012.m3u8'),
+]
 
 
 def get_ts_save_dir(m3u8_url: str):
@@ -76,20 +83,33 @@ def extract_ts_urls(m3u8_url: str, m3u8_content: str) -> List[str]:
     return ts_urls
 
 
-def download_ts_file_with_pool(ts_urls: List[str], save_dir):
+def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=5):
     """
     多线程线程池下载视频分片ts文件
     :param ts_urls: ts视频片段地址列表
     :param save_dir: ts视频片段保存地址
+    :param retry_count: 重试次数
     :return:
     """
     log.info('download ts file with pool. ts file size: {}'.format(len(ts_urls)))
     pool = ThreadPoolExecutor(POOL_SIZE)
     tasks = []
     for ts_url in ts_urls:
-        file_name = u_file.get_file_name_from_url(ts_url)
-        future = pool.submit(u_file.download_file, ts_url, file_name, save_dir, **_REQUESTS_KWARGS)
+        filename = u_file.get_file_name_from_url(ts_url)
+        future = pool.submit(u_file.download_file, ts_url, filename, save_dir, **_REQUESTS_KWARGS)
         tasks.append(future)
+
+    # 检查是否所有文件都下载完成，并记录未完成下载的ts_url
+    not_finished_ts_urls = []
+    for ts_url in ts_urls:
+        filename = u_file.get_file_name_from_url(ts_url)
+        if not os.path.isfile(filename):
+            not_finished_ts_urls.append(ts_url)
+
+    # 递归下载未完成的ts_url
+    if retry_count >= 0 and not not_finished_ts_urls:
+        log.info('not finished ts_urls size: {}, retry times: {}'.format(len(not_finished_ts_urls), retry_count))
+        download_ts_file_with_pool(not_finished_ts_urls, save_dir, retry_count - 1)
 
     # 等待所有线程完成
     wait(tasks, return_when=ALL_COMPLETED)
@@ -156,9 +176,15 @@ def download_with_m3u8_url(title, m3u8_url):
     m3u8_save_path = os.path.join(save_dir, 'index.m3u8')
     # request get m3u8 file content
     m3u8_content = u_file.get_content_with_cache(m3u8_url, m3u8_save_path, **_REQUESTS_KWARGS)
+    if not m3u8_content:
+        log.warn('get m3u8 content failed: {}'.format(m3u8_url))
+        return
 
     # 从m3u8信息总提取ts下载地址
     ts_urls = extract_ts_urls(m3u8_url, m3u8_content)
+    if not ts_urls:
+        log.info('extract ts_urls failed: {}'.format(m3u8_url))
+        return
 
     # 使用线程池下载ts文件列表
     download_ts_file_with_pool(ts_urls, save_dir)
@@ -170,5 +196,13 @@ def download_with_m3u8_url(title, m3u8_url):
     merge_ts_file_by_ffmpeg(m3u8_save_path, title)
 
 
+def download_with_mp4_url(title, mp4_url):
+    save_video_filename = title + '.mp4'
+    log.info('begin download mp4 video finish: {}'.format(title))
+    u_file.download_file(mp4_url, save_video_filename, path=r'result\video')
+    log.info('download mp4 video finish: {}'.format(title))
+
+
 if __name__ == '__main__':
-    download_with_m3u8_url('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=x11012.m3u8')
+    for (title, url) in DOWNLOAD_VIDEOS:
+        download_with_m3u8_url(title, url)
