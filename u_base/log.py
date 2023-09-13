@@ -11,6 +11,18 @@ INFINITE = 1
 logger = logging.getLogger()
 
 
+# 日志等级过滤
+class MaxLevelFilter(logging.Filter):
+    """Filters (lets through) all messages with level < LEVEL"""
+    def __init__(self, level):
+        super().__init__()
+        self.level = level
+
+    def filter(self, record):
+        # "<" instead of "<=": since logger.setLevel is inclusive, this should be exclusive
+        return record.levelno < self.level
+
+
 def init_default_log(name='log-'):
     # 初始化log
     log_path = os.path.join(os.getcwd(), 'log')
@@ -60,6 +72,7 @@ def config_file_logger(logging_instance, log_level, log_file, log_type=ROTATION,
         stdout_handler = logging.StreamHandler(sys.stdout)
         stdout_handler.setFormatter(formatter)
         stdout_handler.setLevel(log_level)
+        stdout_handler.addFilter(MaxLevelFilter(logging.WARNING))
 
         # WARNING 以上输出到 stderr
         stderr_handler = logging.StreamHandler(sys.stderr)
@@ -70,7 +83,6 @@ def config_file_logger(logging_instance, log_level, log_file, log_type=ROTATION,
         logging_instance.addHandler(stderr_handler)
 
     # set RotatingFileHandler
-    rf_handler = None
     if log_type == ROTATION:
         rf_handler = handlers.RotatingFileHandler(log_file, 'a', max_size, 30, encoding='utf-8')
     else:
