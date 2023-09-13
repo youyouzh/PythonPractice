@@ -33,7 +33,7 @@ _REQUESTS_KWARGS = {
 POOL_SIZE = 8
 MEMORY_CACHE = {}   # 全局内存缓存
 DOWNLOAD_VIDEOS = [
-('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=11012.m3u8'),
+# ('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=11012.m3u8'),
 ]
 
 
@@ -192,8 +192,14 @@ def download_with_m3u8_url(title, m3u8_url):
     # 下载解密密钥
     download_decrypt_key(m3u8_url, m3u8_content, save_dir)
 
+    # m3u8文件中的ts路径可能悠参数，去掉参数
+    process_m3u8_save_path = os.path.join(save_dir, 'index-simple.m3u8')
+    meu8_content = u_file.read_content(m3u8_save_path)
+    meu8_content = re.sub(r'\.ts\?\S+', '.ts', meu8_content)
+    u_file.write_content(process_m3u8_save_path, meu8_content)
+
     # 使用ffmpeg合并ts文件
-    merge_ts_file_by_ffmpeg(m3u8_save_path, title)
+    merge_ts_file_by_ffmpeg(process_m3u8_save_path, title)
 
 
 def download_with_mp4_url(title, mp4_url):
