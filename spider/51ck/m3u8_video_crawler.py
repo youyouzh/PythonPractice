@@ -107,7 +107,7 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=5):
             not_finished_ts_urls.append(ts_url)
 
     # 递归下载未完成的ts_url
-    if retry_count >= 0 and not not_finished_ts_urls:
+    if retry_count >= 0 and not_finished_ts_urls:
         log.info('not finished ts_urls size: {}, retry times: {}'.format(len(not_finished_ts_urls), retry_count))
         download_ts_file_with_pool(not_finished_ts_urls, save_dir, retry_count - 1)
 
