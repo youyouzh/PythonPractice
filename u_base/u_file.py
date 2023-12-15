@@ -165,7 +165,7 @@ def get_content(path, encoding=None, retry=0, **kwargs):
             default_headers.update(kwargs.get('headers'))
         kwargs['headers'] = default_headers
 
-        response = requests.get(path, timeout=60, **kwargs)
+        response = requests.get(path, **kwargs)
         if encoding is not None and not kwargs.get('stream', None):
             response.encoding = encoding
 
@@ -179,6 +179,8 @@ def get_content(path, encoding=None, retry=0, **kwargs):
             return response.content
         if response.text is None or response.text == '':
             log.error('The response text is empty.')
+        # 处理网页请求编码乱码问题，使用网页中的编码而不是header编码
+        response.encoding = response.apparent_encoding
         return response.text
     except Exception as e:
         log.error('get url content error. url: {}, error: {}'.format(path, e))
