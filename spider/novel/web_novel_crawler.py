@@ -45,6 +45,18 @@ SELECTOR_MAP = {
 }
 
 
+def get_novel_info(novel_index_url: str) -> dict:
+    html_content = u_file.get_content_with_cache(novel_index_url, **_REQUESTS_KWARGS)
+    soup = BeautifulSoup(html_content, 'lxml')
+
+    basic_operation_text = soup.select_one('div#BasicOperation').text
+    return {
+        'title': soup.select_one('div.summary-content > h1.title > span').text,
+        'like_count': re.compile(r'赞 (\d+)').search(basic_operation_text).groups()[0],
+        'collect_count': re.compile(r'收藏 (\d+)').search(basic_operation_text).groups()[0],
+    }
+
+
 def crawl_chapter_urls(chapter_index_url: str, selector_tag: str) -> list:
     """
     爬取章节目录
@@ -167,4 +179,5 @@ def crawler_from_shuba(novel_index_page_url, novel_title: str):
 
 
 if __name__ == '__main__':
+    info = get_novel_info('https://book.sfacg.com/Novel/552847/')
     crawl_content('https://book.sfacg.com/Novel/552847/MainIndex/', '病娇徒儿对天生媚骨的我图谋不轨')
