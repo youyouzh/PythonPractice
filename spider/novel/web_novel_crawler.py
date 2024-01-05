@@ -1,8 +1,10 @@
 """
 小说爬虫
 """
+import json
 import re
 
+import requests
 from bs4 import BeautifulSoup
 
 import u_base.u_file as u_file
@@ -35,26 +37,86 @@ SELECTOR_MAP = {
     'b.faloo.com': {
         'home_url': 'https://b.faloo.com',
         'chapter_url': 'div.c_con_list > div.c_con_li_detail_p > a',
-        'chapter_content': 'div.noveContent'
+        'chapter_content': 'div.noveContent > p'
     },
     'book.sfacg.com': {
         'home_url': 'https://book.sfacg.com/',
         'chapter_url': 'div.catalog-list > ul > li > a',
         'chapter_content': 'div.article-content > p'
+    },
+    'www.69shuba.com': {
+        'home_url': 'https://www.69shuba.com/',
+        'chapter_url': 'div.catalog > ul > li > a',
+        'chapter_content': 'div.txtnav > p'
     }
 }
 
 
-def get_novel_info(novel_index_url: str) -> dict:
-    html_content = u_file.get_content_with_cache(novel_index_url, **_REQUESTS_KWARGS)
-    soup = BeautifulSoup(html_content, 'lxml')
+def patch_novel_info(novel_info: dict) -> dict:
+    if novel_info['crawlSourceName'] == 'SF轻小说':
+        # 首先爬取小说url
+        novel_info_index_url = 'https://index.tsyuri.com/book/{}.html'.format(novel_info['id'])
+        html_content = u_file.get_content_with_cache(novel_info_index_url, **_REQUESTS_KWARGS)
+        soup = BeautifulSoup(html_content, 'lxml')
 
-    basic_operation_text = soup.select_one('div#BasicOperation').text
-    return {
-        'title': soup.select_one('div.summary-content > h1.title > span').text,
-        'like_count': re.compile(r'赞 (\d+)').search(basic_operation_text).groups()[0],
-        'collect_count': re.compile(r'收藏 (\d+)').search(basic_operation_text).groups()[0],
+        novel_index_node = soup.select_one('div.layui-col-xs8 > div > a')
+        if not novel_index_node:
+            log.error('can not extract novel index url: {}'.format(novel_info['bookName']))
+            return novel_info
+        novel_index_url = novel_index_node['href']
+        log.info('extract novel index url success. book: {}, url: {}'.format(novel_info['bookName'], novel_index_url))
+
+        html_content = u_file.get_content_with_cache(novel_index_url, **_REQUESTS_KWARGS)
+        soup = BeautifulSoup(html_content, 'lxml')
+
+        basic_operation_text = soup.select_one('div#BasicOperation').text
+        log.info('extract base operation info success. book: {}, text: {}'
+                 .format(novel_info['bookName'], basic_operation_text))
+        novel_info['like_count'] = re.compile(r'赞 (\d+)').search(basic_operation_text).groups()[0]
+        novel_info['collect_count'] = re.compile(r'收藏 (\d+)').search(basic_operation_text).groups()[0]
+        return novel_info
+
+
+def get_novel_list_from_bb():
+    query_api = 'https://index.tsyuri.com/book/searchByPage'
+    params = {
+        'curr': 1,
+        'limit': 100,
+        'bookStatus': '1',
+        'wordCountMin': 300000,
+        'wordCountMax': '',
+        'sort': 'click_purity_score',
+        'updatePeriod': '',
+        'purity': '1',
+        'keyword': '',
+        'tag': '%2C变百%2C百合',
+        'source': '%2CSF轻小说%2C次元姬%2C刺猬猫%2C起点'
     }
+    response = requests.get(query_api, params=params)
+    if response.status_code != 200:
+        log.error('request query api status code not 200.')
+        return []
+    data = json.loads(response.text)
+    if 'code' not in data or data['code'] != '200' or 'data' not in data:
+        log.error('response data.code is not 200')
+        return []
+    data = data['data']
+    log.info('page_number: {}, size: {}, total: {}'.format(data['pageNum'], data['pageSize'], data['total']))
+    return list(map(lambda x: {
+        'id': x['id'],
+        'catName': x['catName'],
+        'picUrl': x['picUrl'],
+        'bookName': x['bookName'],
+        'newTag': x['newTag'],
+        'authorName': x['authorName'],
+        'bookDesc': x['bookDesc'],
+        'purity': x['purity'],
+        'visitCount': x['visitCount'],
+        'likeCount': 0,
+        'collectCount': 0,
+        'crawlSourceName': x['crawlSourceName'],
+        'tag': x['tag'],
+    }, data['list']))
 
 
 def crawl_chapter_urls(chapter_index_url: str, selector_tag: str) -> list:
@@ -144,40 +206,7 @@ def crawl_content(chapter_index_url: str, novel_title: str):
         u_file.write_content(novel_save_path, novel_content)
 
 
-def crawler_from_shuba(novel_index_page_url, novel_title: str):
-    """
-    支持从 https://www.69shuba.com 爬取内容
-    :param novel_index_page_url: 小说章节目录页
-    :param novel_title: 小说书名
-    :return:
-    """
-    html_content = u_file.get_content_with_cache(novel_index_page_url, **_REQUESTS_KWARGS)
-    soup = BeautifulSoup(html_content, 'lxml')
-
-    chapter_menu_nodes = soup.select('div.catalog > ul > li > a')
-    log.info('chapter size: {}'.format(chapter_menu_nodes))
-    novel_content = ''
-    for chapter_menu_node in chapter_menu_nodes:
-        # 跳过空链接
-        chapter_content_url = chapter_menu_node['href']
-        if not chapter_content_url or '#' == chapter_content_url:
-            log.warn('skip empty url: {}'.format(chapter_menu_node))
-            continue
-
-        log.info('begin crawler content from chapter: {}'.format(chapter_menu_node))
-        chapter_content = u_file.get_content_with_cache(chapter_menu_node['href'], **_REQUESTS_KWARGS)
-        chapter_soup = BeautifulSoup(chapter_content, 'lxml')
-        chapter_content_node = chapter_soup.select('div.txtnav')
-        if not chapter_content_node:
-            log.error('get chapter content empty. {}'.format(chapter_menu_node))
-            continue
-        chapter_content_node = chapter_content_node[0]
-        novel_content += chapter_content_node.text + '\n'
-    novel_save_path = f'cache\\{novel_title}.txt'
-    u_file.write_content(novel_save_path, novel_content)
-    return novel_save_path
-
-
 if __name__ == '__main__':
-    info = get_novel_info('https://book.sfacg.com/Novel/552847/')
+    book_infos = get_novel_list_from_bb()
+    info = patch_novel_info(book_infos[0])
     crawl_content('https://book.sfacg.com/Novel/552847/MainIndex/', '病娇徒儿对天生媚骨的我图谋不轨')
