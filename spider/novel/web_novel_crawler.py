@@ -64,16 +64,21 @@ def patch_novel_info(novel_info: dict) -> dict:
             log.error('can not extract novel index url: {}'.format(novel_info['bookName']))
             return novel_info
         novel_index_url = novel_index_node['href']
+        novel_info['novel_index_url'] = novel_index_url
         log.info('extract novel index url success. book: {}, url: {}'.format(novel_info['bookName'], novel_index_url))
 
         html_content = u_file.get_content_with_cache(novel_index_url, **_REQUESTS_KWARGS)
         soup = BeautifulSoup(html_content, 'lxml')
 
-        basic_operation_text = soup.select_one('div#BasicOperation').text
+        basic_operation_node = soup.select_one('div#BasicOperation')
+        if not basic_operation_node:
+            log.error('basic operation node is empty. book: {}, url: {}'.format(novel_info['bookName'], novel_index_url))
+            return novel_info
+        basic_operation_text = basic_operation_node.text
         log.info('extract base operation info success. book: {}, text: {}'
-                 .format(novel_info['bookName'], basic_operation_text))
-        novel_info['like_count'] = re.compile(r'赞 (\d+)').search(basic_operation_text).groups()[0]
-        novel_info['collect_count'] = re.compile(r'收藏 (\d+)').search(basic_operation_text).groups()[0]
+                 .format(novel_info['bookName'], basic_operation_text.replace('\n', '')))
+        novel_info['likeCount'] = re.compile(r'赞 (\d+)').search(basic_operation_text).groups()[0]
+        novel_info['collectCount'] = re.compile(r'收藏 (\d+)').search(basic_operation_text).groups()[0]
         return novel_info
 
 
@@ -83,13 +88,14 @@ def get_novel_list_from_bb():
         'curr': 1,
         'limit': 100,
         'bookStatus': '1',
-        'wordCountMin': 300000,
+        'wordCountMin': 150000,
         'wordCountMax': '',
         'sort': 'click_purity_score',
         'updatePeriod': '',
         'purity': '1',
         'keyword': '',
-        'tag': '%2C变百%2C百合',
+        'tag': '%2C百合',
+        # 'tag': '%2C变百%2C百合',
         'source': '%2CSF轻小说%2C次元姬%2C刺猬猫%2C起点'
     }
     response = requests.get(query_api, params=params)
@@ -206,7 +212,19 @@ def crawl_content(chapter_index_url: str, novel_title: str):
         u_file.write_content(novel_save_path, novel_content)
 
 
-if __name__ == '__main__':
+def crawl_novel_list():
+    book_info_cache_file = r'result\yuri_book_infos.json'
     book_infos = get_novel_list_from_bb()
-    info = patch_novel_info(book_infos[0])
-    crawl_content('https://book.sfacg.com/Novel/552847/MainIndex/', '病娇徒儿对天生媚骨的我图谋不轨')
+    for book_info in book_infos:
+        log.info('patch book info: {}'.format(book_info['bookName']))
+        patch_novel_info(book_info)
+        u_file.dump_json_to_file(book_info_cache_file, book_infos)
+    book_infos = sorted(book_infos, key=lambda x: int(x['collectCount']), reverse=True)
+    u_file.dump_json_to_file(book_info_cache_file, book_infos)
+
+
+if __name__ == '__main__':
+    # book_infos = get_novel_list_from_bb()
+    # info = patch_novel_info(book_infos[0])
+    crawl_novel_list()
+    # crawl_content('https://book.sfacg.com/Novel/552847/MainIndex/', '病娇徒儿对天生媚骨的我图谋不轨')
