@@ -2,9 +2,11 @@
 小说爬虫
 """
 import json
+import os.path
 import re
 
 import requests
+from urllib.parse import quote
 from bs4 import BeautifulSoup
 
 import u_base.u_file as u_file
@@ -53,6 +55,10 @@ SELECTOR_MAP = {
 
 
 def patch_novel_info(novel_info: dict) -> dict:
+    book_name = novel_info['bookName']
+    if novel_info['collectCount']:
+        log.info('this book collect info is not need to patch: {}'.format(book_name))
+        # return novel_info
     if novel_info['crawlSourceName'] == 'SF轻小说':
         # 首先爬取小说url
         novel_info_index_url = 'https://index.tsyuri.com/book/{}.html'.format(novel_info['id'])
@@ -61,28 +67,61 @@ def patch_novel_info(novel_info: dict) -> dict:
 
         novel_index_node = soup.select_one('div.layui-col-xs8 > div > a')
         if not novel_index_node:
-            log.error('can not extract novel index url: {}'.format(novel_info['bookName']))
+            log.error('can not extract novel index url: {}'.format(book_name))
             return novel_info
         novel_index_url = novel_index_node['href']
         novel_info['novel_index_url'] = novel_index_url
-        log.info('extract novel index url success. book: {}, url: {}'.format(novel_info['bookName'], novel_index_url))
+        log.info('extract novel index url success. book: {}, url: {}'.format(book_name, novel_index_url))
 
         html_content = u_file.get_content_with_cache(novel_index_url, **_REQUESTS_KWARGS)
         soup = BeautifulSoup(html_content, 'lxml')
 
-        basic_operation_node = soup.select_one('div#BasicOperation')
-        if not basic_operation_node:
-            log.error('basic operation node is empty. book: {}, url: {}'.format(novel_info['bookName'], novel_index_url))
+        book_grade_node = soup.select_one('div#BasicOperation')
+        if not book_grade_node:
+            log.error('basic grade node is empty. book: {}, url: {}'.format(book_name, novel_index_url))
             return novel_info
-        basic_operation_text = basic_operation_node.text
-        log.info('extract base operation info success. book: {}, text: {}'
-                 .format(novel_info['bookName'], basic_operation_text.replace('\n', '')))
-        novel_info['likeCount'] = re.compile(r'赞 (\d+)').search(basic_operation_text).groups()[0]
-        novel_info['collectCount'] = re.compile(r'收藏 (\d+)').search(basic_operation_text).groups()[0]
+        basic_grade_text = book_grade_node.text.replace('\n', '')
+        log.info('extract book grade info success. book: {}, text: {}'.format(book_name, basic_grade_text))
+        novel_info['likeCount'] = re.compile(r'赞 (\d+)').search(basic_grade_text).groups()[0]
+        novel_info['collectCount'] = re.compile(r'收藏 (\d+)').search(basic_grade_text).groups()[0]
+        return novel_info
+    if novel_info['crawlSourceName'] == '刺猬猫':
+        # 搜索小说，然后匹配获取小说页
+        search_url = 'https://www.ciweimao.com/get-search-book-list/0-0-0-0-0-0/{}/{}/1'\
+            .format(quote('全部'), quote(book_name))
+        html_content = u_file.get_content_with_cache(search_url, **_REQUESTS_KWARGS)
+        soup = BeautifulSoup(html_content, 'lxml')
+
+        search_book_nodes = soup.select('div.cnt > p.tit > a')
+        if not search_book_nodes:
+            log.error('search book result is empty: {}'.format(book_name))
+            return novel_info
+        for search_book_node in search_book_nodes:
+            if search_book_node['title'] == book_name:
+                novel_info['novel_index_url'] = search_book_node['href']
+                break
+        if 'novel_index_url' not in novel_info or not novel_info['novel_index_url']:
+            log.error('search book index url is empty: {}'.format(book_name))
+            return novel_info
+
+        html_content = u_file.get_content_with_cache(novel_info['novel_index_url'], **_REQUESTS_KWARGS)
+        soup = BeautifulSoup(html_content, 'lxml')
+
+        book_grade_node = soup.select_one('p.book-grade')
+        if not book_grade_node:
+            log.error('basic grade node is empty. book: {}, url: {}'
+                      .format(book_name, novel_info['novel_index_url']))
+            return novel_info
+        basic_grade_text = book_grade_node.text.replace('\n', '')
+        log.info('extract book grade info success. book: {}, text: {}'.format(book_name, basic_grade_text))
+        novel_info['likeCount'] = re.compile(r'总点击：([,\d.万]+)').search(basic_grade_text).groups()[0]
+        novel_info['collectCount'] = re.compile(r'总收藏：(\d+)').search(basic_grade_text).groups()[0]
         return novel_info
 
 
-def get_novel_list_from_bb():
+def get_novel_list_from_bb(cache_file=''):
+    if cache_file and os.path.isfile(cache_file):
+        return u_file.load_json_from_file(cache_file)
     query_api = 'https://index.tsyuri.com/book/searchByPage'
     params = {
         'curr': 1,
@@ -94,8 +133,8 @@ def get_novel_list_from_bb():
         'updatePeriod': '',
         'purity': '1',
         'keyword': '',
-        'tag': '%2C百合',
-        # 'tag': '%2C变百%2C百合',
+        # 'tag': '%2C百合',
+        'tag': '%2C变百%2C百合',
         'source': '%2CSF轻小说%2C次元姬%2C刺猬猫%2C起点'
     }
     response = requests.get(query_api, params=params)
@@ -214,7 +253,7 @@ def crawl_content(chapter_index_url: str, novel_title: str):
 
 def crawl_novel_list():
     book_info_cache_file = r'result\yuri_book_infos.json'
-    book_infos = get_novel_list_from_bb()
+    book_infos = get_novel_list_from_bb(book_info_cache_file)
     for book_info in book_infos:
         log.info('patch book info: {}'.format(book_info['bookName']))
         patch_novel_info(book_info)
