@@ -262,8 +262,86 @@ def crawl_novel_list():
     u_file.dump_json_to_file(book_info_cache_file, book_infos)
 
 
+"""
+// Fiddler自定义抓包导出脚本，使用 boluobao-4.8.22.apk，逍遥模拟器，postern
+// 自动保存session到本地，需将该部分内容加到 OnBeforeResponse 中
+if (oSession.fullUrl.Contains("api.sfacg.com"))
+{  
+  var mathRegexes = {
+    'novel': /\/novels\/(\d+)\?/,
+    'chap': /\/Chaps\/(\d+)\?/,
+    'dir': /\/novels\/(\d+)\/dirs\?/
+  };
+
+  var savePath = "D:/work/other/";
+  for (var key in mathRegexes) {
+    // 匹配并保存请求
+    var matchResult = mathRegexes[key].exec(oSession.fullUrl);
+      if (matchResult && matchResult.length >= 2) {
+        oSession.SaveSession(savePath + key + '-' + matchResult[1] + '.txt', false);
+      }
+  }
+}
+"""
+
+
+def process_sf():
+    """
+    处理sf抓包导出的小说内容转存，fiddler导出脚本如上
+    :return:
+    """
+    save_path = r'D:\work\other\nn'
+    request_files = u_file.get_all_sub_files(save_path, contain_dir=False)
+
+    def read_response_json(file_path: str) -> dict:
+        file_content = u_file.read_content(file_path)
+        split_token = 'X-Powered-By: ASP.NET'
+        split_index = file_content.find(split_token)
+        if split_index == -1:
+            log.error('The file response is not format.')
+            return {}
+        return json.loads(file_content[split_index + len(split_token):].strip())
+
+    novel_info_map = {}
+    dir_info_map = {}
+    chap_content_map = {}
+
+    for request_file in request_files:
+        if 'novel' in request_file:
+            novel_info = read_response_json(request_file)
+            novel_info = novel_info['data']
+            novel_info_map[novel_info['novelId']] = novel_info
+        if 'dir' in request_file:
+            dir_info = read_response_json(request_file)
+            dir_info = dir_info['data']
+            dir_info_map[dir_info['novelId']] = dir_info
+        if 'chap' in request_file:
+            chap_content = read_response_json(request_file)
+            chap_content = chap_content['data']
+            chap_content_map[chap_content['chapId']] = chap_content
+
+    for novel_info in novel_info_map.values():
+        novel_id = novel_info['novelId']
+        dir_info = dir_info_map[novel_id]
+        novel_content = ''
+        log.info('begin process novel. id: {}, name: {}'.format(novel_id, novel_info['novelName']))
+        for volume in dir_info['volumeList']:
+            novel_content += '\n\n{}\n\n'.format(volume['title'])
+            for chapter in volume['chapterList']:
+                log.info('process novel chapter, novel_id: {}, chapter_id: {}'.format(novel_id, chapter['chapId']))
+                novel_content += '\n\n{}\n'.format(chapter['title'])
+                chapter_id = chapter['chapId']
+                if chapter_id not in chap_content_map:
+                    log.warn('The chapter is not download: {}'.format(chapter_id))
+                    continue
+                novel_content += chap_content_map[chapter_id]['expand']['content']
+
+            u_file.write_content(r'result/{}.txt'.format(novel_info['novelName']), novel_content)
+
+
 if __name__ == '__main__':
     # book_infos = get_novel_list_from_bb()
+    process_sf()
     # info = patch_novel_info(book_infos[0])
-    crawl_novel_list()
+    # crawl_novel_list()
     # crawl_content('https://book.sfacg.com/Novel/552847/MainIndex/', '病娇徒儿对天生媚骨的我图谋不轨')
