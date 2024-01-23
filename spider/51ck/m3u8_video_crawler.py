@@ -30,8 +30,8 @@ _REQUESTS_KWARGS = {
         'sec-fetch-site': 'cross-site'
     }
 }
-POOL_SIZE = 8
-MEMORY_CACHE = {}   # 全局内存缓存
+DOWNLOAD_THREAD_POOL_SIZE = 8   # 下载线程池数量
+FFMPEG_PATH = r'D:\work\software\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe'
 DOWNLOAD_VIDEOS = [
 # ('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=11012.m3u8'),
 ]
@@ -92,7 +92,7 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=5):
     :return:
     """
     log.info('download ts file with pool. ts file size: {}'.format(len(ts_urls)))
-    pool = ThreadPoolExecutor(POOL_SIZE)
+    pool = ThreadPoolExecutor(DOWNLOAD_THREAD_POOL_SIZE)
     tasks = []
     for ts_url in ts_urls:
         filename = u_file.get_file_name_from_url(ts_url)
@@ -127,7 +127,7 @@ def download_decrypt_key(m3u8_url: str, m3u8_content: str, key_save_dir: str):
     decrypt_content_regex = re.compile(r'EXT-X-KEY:METHOD=AES-128,URI="(\w+.ts)",IV=0x(\w+)')
     search_result = decrypt_content_regex.search(m3u8_content)
     if not search_result or not search_result.groups():
-        log.error('Can not find any AES decrypt URI.')
+        log.warn('Can not find any AES decrypt URI.')
         return
     decrypt_key_filename = search_result.groups()[0]
     decrypt_key_url = urljoin(m3u8_url, search_result.groups()[0])
@@ -153,13 +153,12 @@ def merge_ts_file_by_ffmpeg(m3u8_save_path: str, video_name: str):
 
     # 检查文件是否已经存在，避免重新合并
     if os.path.isfile(merge_video_path):
-        log.warn('The merge video file is exist: {}'.format(merge_video_path))
+        log.error('The merge video file is exist: {}'.format(merge_video_path))
         return
 
     m3u8_save_path = os.path.abspath(m3u8_save_path)  # 命令行允许需要完全路径
-    ffmpeg_path = r'D:\work\software\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe'
     merge_command = r'{} -allowed_extensions ALL -y -i "{}" -c copy "{}"'\
-        .format(ffmpeg_path, m3u8_save_path, merge_video_path).replace('\\', '\\\\')
+        .format(FFMPEG_PATH, m3u8_save_path, merge_video_path).replace('\\', '\\\\')
     log.info('begin merge file by ffmpeg: {}'.format(merge_command))
     u_file.run_command(merge_command)
     log.info('merge file success: {}'.format(merge_video_path))
@@ -170,29 +169,28 @@ def download_with_m3u8_url(title, m3u8_url):
     下载m3u8视频
     :param title: 视频标题，用于保存文件名
     :param m3u8_url: m3u8视频地址
-    :param decrypt_function: 如果视频流有加密，需要提供解密算法
     """
     save_dir = get_ts_save_dir(m3u8_url)
     m3u8_save_path = os.path.join(save_dir, 'index.m3u8')
     # request get m3u8 file content
     m3u8_content = u_file.get_content_with_cache(m3u8_url, m3u8_save_path, **_REQUESTS_KWARGS)
     if not m3u8_content:
-        log.warn('get m3u8 content failed: {}'.format(m3u8_url))
+        log.error('get m3u8 content failed: {}'.format(m3u8_url))
         return
 
     # 从m3u8信息总提取ts下载地址
     ts_urls = extract_ts_urls(m3u8_url, m3u8_content)
     if not ts_urls:
-        log.info('extract ts_urls failed: {}'.format(m3u8_url))
+        log.error('extract ts_urls failed: {}'.format(m3u8_url))
         return
 
     # 使用线程池下载ts文件列表
     download_ts_file_with_pool(ts_urls, save_dir)
 
-    # 下载解密密钥
+    # 下载解密密钥，并将秘钥放到指定目录，用于ffmpeg解密
     download_decrypt_key(m3u8_url, m3u8_content, save_dir)
 
-    # m3u8文件中的ts路径可能悠参数，去掉参数
+    # m3u8文件中的ts路径可能有参数，去掉参数，否则会影响ffmpeg合并视频
     process_m3u8_save_path = os.path.join(save_dir, 'index-simple.m3u8')
     meu8_content = u_file.read_content(m3u8_save_path)
     meu8_content = re.sub(r'\.ts\?\S+', '.ts', meu8_content)
