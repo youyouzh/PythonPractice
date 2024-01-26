@@ -1,9 +1,6 @@
 """
 小说爬虫
 """
-import json
-import re
-
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
@@ -202,14 +199,19 @@ def crawl_novel_by_next(begin_chapter_url: str, novel_title: str):
         next_chapter_url_node = chapter_soup.select_one(crawl_config.next_chapter_url_selector)
         if next_chapter_url_node:
             next_chapter_url = patch_url(begin_chapter_url, next_chapter_url_node['href'])
+        else:
+            log.error('can not extract next url from: {}. finish it.'.format(next_chapter_url))
+            return novel_content
 
         # 章节标题
         chapter_title_node = chapter_soup.select_one(crawl_config.chapter_title_selector)
         novel_content += '\n\n' + chapter_title_node.text + '\n'
+        log.info('extract next url success: {}'.format(next_chapter_url))
 
         # 章节内容
         chapter_content_node = chapter_soup.select_one(crawl_config.chapter_content_selector)
         chapter_content = chapter_content_node.text
+        chapter_content = chapter_content.replace('\n\n\n+', '\n\n')  # 替换掉多余的空行
         if len(chapter_content) <= 500:
             log.error('content is less: {}'.format(next_chapter_url))
             continue
