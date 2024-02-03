@@ -31,6 +31,7 @@ _REQUESTS_KWARGS = {
     }
 }
 DOWNLOAD_THREAD_POOL_SIZE = 8   # 下载线程池数量
+REPLACE_SAME_NAME_VIDEO = False   # 替换同名视频
 FFMPEG_PATH = r'D:\work\software\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe'
 DOWNLOAD_VIDEOS = [
 # ('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=11012.m3u8'),
@@ -83,7 +84,23 @@ def extract_ts_urls(m3u8_url: str, m3u8_content: str) -> List[str]:
     return ts_urls
 
 
-def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=5):
+def get_not_finish_ts_urls(ts_urls: List[str], save_dir: str) -> List[str]:
+    """
+    技术按指定文件夹下没有下完的ts_urls
+    :param ts_urls: ts文件下载地址列表
+    :param save_dir: 保存路径
+    :return: 没有下载的ts文件下载地址列表
+    """
+    not_finished_ts_urls = []
+    for ts_url in ts_urls:
+        filename = u_file.get_file_name_from_url(ts_url)
+        filepath = os.path.join(save_dir, filename)
+        if not os.path.isfile(filepath):
+            not_finished_ts_urls.append(ts_url)
+    return not_finished_ts_urls
+
+
+def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=10):
     """
     多线程线程池下载视频分片ts文件
     :param ts_urls: ts视频片段地址列表
@@ -100,11 +117,7 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=5):
         tasks.append(future)
 
     # 检查是否所有文件都下载完成，并记录未完成下载的ts_url
-    not_finished_ts_urls = []
-    for ts_url in ts_urls:
-        filename = u_file.get_file_name_from_url(ts_url)
-        if not os.path.isfile(filename):
-            not_finished_ts_urls.append(ts_url)
+    not_finished_ts_urls = get_not_finish_ts_urls(ts_urls, save_dir)
 
     # 递归下载未完成的ts_url
     if retry_count >= 0 and not_finished_ts_urls:
@@ -113,6 +126,11 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=5):
 
     # 等待所有线程完成
     wait(tasks, return_when=ALL_COMPLETED)
+    not_finished_ts_urls = get_not_finish_ts_urls(ts_urls, save_dir)
+    if not_finished_ts_urls:
+        # 存在部分ts文件没下载成功则结束，不进行合并
+        log.error('some ts file is download fail. size: {}'.format(len(not_finished_ts_urls)))
+        exit(-1)
     log.info('all ts file download success.')
 
 
@@ -134,7 +152,7 @@ def download_decrypt_key(m3u8_url: str, m3u8_content: str, key_save_dir: str):
     u_file.download_file(decrypt_key_url, decrypt_key_filename, key_save_dir, **_REQUESTS_KWARGS)
 
 
-def merge_ts_file_by_ffmpeg(m3u8_save_path: str, video_name: str):
+def merge_ts_file_by_ffmpeg(m3u8_save_path: str, merge_video_path: str):
     """
     使用ffmpeg合并ts文件
         -f concat，-f 一般设置输出文件的格式，如-f psp（输出psp专用格式），但是如果跟concat，则表示采用concat协议，对文件进行连接合并
@@ -142,20 +160,10 @@ def merge_ts_file_by_ffmpeg(m3u8_save_path: str, video_name: str):
         -i xxx.m3u8 后面加输入文件名，也可以输入ts文件名
         -c copy c表示输出文件采用的编码器，后面跟copy，表示直接复制，不重新编码
         -y 自动覆盖文件
-    :param m3u8_save_path:
-    :param video_name:
+    :param m3u8_save_path: m3u8文件夹路径
+    :param merge_video_path: 合并生成视频文件保存路径
     :return:
     """
-    merge_video_filename = video_name + '.mp4'
-    merge_video_path = os.path.join(r'result\video', merge_video_filename)
-    merge_video_path = os.path.abspath(merge_video_path)
-    u_file.ready_dir(merge_video_path)
-
-    # 检查文件是否已经存在，避免重新合并
-    if os.path.isfile(merge_video_path):
-        log.error('The merge video file is exist: {}'.format(merge_video_path))
-        return
-
     m3u8_save_path = os.path.abspath(m3u8_save_path)  # 命令行允许需要完全路径
     merge_command = r'{} -allowed_extensions ALL -y -i "{}" -c copy "{}"'\
         .format(FFMPEG_PATH, m3u8_save_path, merge_video_path).replace('\\', '\\\\')
@@ -170,6 +178,17 @@ def download_with_m3u8_url(title, m3u8_url):
     :param title: 视频标题，用于保存文件名
     :param m3u8_url: m3u8视频地址
     """
+    merge_video_filename = title + '.mp4'
+    merge_video_path = os.path.join(r'result\video', merge_video_filename)
+    merge_video_path = os.path.abspath(merge_video_path)
+    u_file.ready_dir(merge_video_path)
+
+    # 检查文件是否已经存在，避免重新下载合并
+    if os.path.isfile(merge_video_path):
+        log.warn('The same name video file is exist: {}'.format(merge_video_path))
+        if not REPLACE_SAME_NAME_VIDEO:
+            return False
+
     save_dir = get_ts_save_dir(m3u8_url)
     m3u8_save_path = os.path.join(save_dir, 'index.m3u8')
     # request get m3u8 file content
@@ -197,7 +216,7 @@ def download_with_m3u8_url(title, m3u8_url):
     u_file.write_content(process_m3u8_save_path, meu8_content)
 
     # 使用ffmpeg合并ts文件
-    merge_ts_file_by_ffmpeg(process_m3u8_save_path, title)
+    merge_ts_file_by_ffmpeg(process_m3u8_save_path, merge_video_path)
 
 
 def download_with_mp4_url(title, mp4_url):
@@ -208,5 +227,5 @@ def download_with_mp4_url(title, mp4_url):
 
 
 if __name__ == '__main__':
-    for (title, url) in DOWNLOAD_VIDEOS:
-        download_with_m3u8_url(title, url)
+    for (name, url) in DOWNLOAD_VIDEOS:
+        download_with_m3u8_url(name, url)
