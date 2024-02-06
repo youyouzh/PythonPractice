@@ -13,9 +13,10 @@ import urllib.parse
 import requests
 from PIL import Image
 from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
+import u_log as logger
 
 
-import u_base.u_log as log
+from u_base.u_log import logger as log
 
 __all__ = [
     'convert_windows_path',
@@ -576,3 +577,31 @@ def run_command(command):
     for line in process.stdout:
         line = line.rstrip().decode('utf-8')
         print(">>>", line)
+
+
+def load_header_from_curl_bash(curl_bash_filepath: str):
+    """
+    从浏览器网络中抓包导出请求导出header，通过右键请求【复制 -> Curl Bash】导出
+    :param curl_bash_filepath:
+    :return:
+    """
+    if not os.path.isfile(curl_bash_filepath):
+        logger.error('The curl bash file is not exist: {}'.format(curl_bash_filepath))
+        return []
+    header = {}
+    with open(curl_bash_filepath, 'r', encoding='utf-8') as fin:
+        lines = fin.readlines()
+        # 提取请求头
+        match_header_regex = re.compile(r'^ +-H \'([\w-]+): ([^\'^]+)\'')
+        for line in lines:
+            if '-H' not in line:
+                continue
+            header_match_result = match_header_regex.search(line)
+            if not header_match_result or not header_match_result.groups():
+                logger.info('not format header: {}'.format(line))
+                continue
+            header_key = header_match_result.groups()[0]
+            header_value = header_match_result.groups()[1]
+            header[header_key.strip()] = header_value.strip()
+    logger.info('extract header success: {}'.format(header))
+    return header
