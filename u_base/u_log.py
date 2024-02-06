@@ -9,12 +9,10 @@
 from __future__ import print_function
 
 __all__ = [
-    'debug', 'info', 'warn', 'critical',
-    'init_log_instance', 'set_log_level',
+    'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL', 'MIN_LEVEL',
+    'init_log_instance', 'set_log_level', 'logger',
     'ROTATION', 'INFINITE',
-    're_init_log_instance', 'get_inited_logger_name', 'parse',
-    'backtrace_info', 'backtrace_debug', 'backtrace_error',
-    'backtrace_critical'
+    're_init_log_instance', 'get_inited_logger_name', 'parse_log_line',
 ]
 
 import os
@@ -25,7 +23,6 @@ import time
 import threading
 from logging import handlers
 
-import u_base
 from u_base import u_exception
 from u_base import u_platform
 
@@ -46,7 +43,7 @@ MIN_LEVEL = logging.DEBUG
 # global logging instance name
 G_INITED_LOGGER = []
 
-# log function
+# log function, deprecate
 debug = logging.debug
 info = logging.info
 warn = logging.warning
@@ -70,86 +67,6 @@ class _Singleton(object):
             self.__instance = self.__cls(*args, **kwargs)
         self._LOCK.release()
         return self.__instance
-
-
-class _MsgFilter(logging.Filter):
-    """
-    Msg filters by log levels, extends from logging.Filter
-    """
-
-    def __init__(self, msg_level=logging.WARNING):
-        """
-        construct function
-        :param msg_level: the level of log level
-        """
-        super().__init__()
-        self.msg_level = msg_level
-
-    def filter(self, record):
-        """
-        overload, filter the msg by log level
-        :param record:
-        :return: true mean log, false mean don't need log
-        """
-        if record.levelno >= self.msg_level:
-            return False
-        else:
-            return True
-
-
-def _line(depth=0):
-    """
-    get current code line number
-    :param depth: the depth of the frame at the top of the call stack.
-    :return: line number
-    """
-    return sys._getframe(depth + 1).f_lineno
-
-
-def _file(depth=0):
-    """
-    get current call function name
-    :param depth: the depth of the frame at the top of the call stack.
-    :return: call function name
-    """
-    return os.path.basename(sys._getframe(depth + 1).f_code.co_filename)
-
-
-def _process_thread_id():
-    """
-    get current process id and thread id
-    :return: a str of {process_id}:{thread_id}
-    """
-    return str(os.getpid()) + ':' + str(threading.current_thread().ident)
-
-
-def _log_file_func_info(msg, back_trace_len=0):
-    """
-    log file and function info
-    :param msg: message
-    :param back_trace_len: back trace length
-    :return: the message added file function info
-    """
-    temp_msg = ' * [%s] [%s:%s] ' % (
-        _process_thread_id(), _file(2 + back_trace_len),
-        _line(2 + back_trace_len)
-    )
-
-    msg = '%s%s' % (temp_msg, msg)
-    if isinstance(msg, str):
-        return msg
-    else:
-        return msg.decode('utf8')
-
-
-def set_log_level(level):
-    """
-    change log level during runtime
-    :param level: log level
-    :return: none
-    """
-    logger_instance = _LoggerInstance()
-    logger_instance.getlogger().setLevel(level)
 
 
 # 日志等级过滤
@@ -178,7 +95,7 @@ class _LoggerInstance(object):
     def __init__(self):
         pass
 
-    def get_logger(self):
+    def get_logger(self) -> logging.Logger:
         """
         get logger instance
         :return: logger instance
@@ -217,10 +134,7 @@ class _LoggerInstance(object):
         judge the log instance is Initialized or not
         :return: True or False
         """
-        if self._logger_instance is None:
-            return False
-        else:
-            return True
+        return self._logger_instance is not None
 
     def config_file_logger(self, log_level, log_file, log_type,
                            max_size, print_console=True, generate_wf_file=False):
@@ -261,15 +175,15 @@ class _LoggerInstance(object):
 
         # print to console
         if print_console:
-            info('print_console enabled, will print to stdout')
+            logging.info('print_console enabled, will print to stdout')
             # 避免默认basicConfig已经注册了root的StreamHandler，会重复输出日志，先移除掉
-            for handler in logging.getLogger().handlers:
+            for handler in self._logger_instance.handlers:
                 if handler.name is None and isinstance(handler, logging.StreamHandler):
-                    logging.getLogger().removeHandler(handler)
+                    self._logger_instance.removeHandler(handler)
             # DEBUG INFO 输出到 stdout
             stdout_handler = logging.StreamHandler(sys.stdout)
             stdout_handler.setFormatter(formatter)
-            stdout_handler.setLevel(MIN_LEVEL)
+            stdout_handler.setLevel(min(log_level, MIN_LEVEL))
             stdout_handler.addFilter(MaxLevelFilter(WARNING))
 
             # WARNING 以上输出到 stderr
@@ -298,13 +212,12 @@ class _LoggerInstance(object):
             warn_handler.setLevel(logging.WARNING)
             warn_handler.setFormatter(formatter)
             self._logger_instance.addHandler(warn_handler)
-            rf_handler.addFilter(_MsgFilter(logging.WARNING))
 
         self._logger_instance.addHandler(rf_handler)
 
 
 def init_log_instance(name, level=logging.INFO, file='u_log', log_type=ROTATION,
-                      max_size=1073741824, print_console=False, generate_wf=False):
+                      max_size=1073741824, print_console=False, generate_wf=False) -> logging.Logger:
     """
     Initialize your logging
     :param name: Unique logger name
@@ -318,7 +231,7 @@ def init_log_instance(name, level=logging.INFO, file='u_log', log_type=ROTATION,
         oldest to the most recent.
 
         log.INFINITE will write on the logfile infinitely
-    :param max_size: max log size with byte
+    :param max_size: max log size with byte, default 1GB
     :param print_console: print to stdout or not?
     :param generate_wf: print log msg with level >= WARNING to file (${logfile}.wf)
     :return: none
@@ -357,17 +270,17 @@ def init_log_instance(name, level=logging.INFO, file='u_log', log_type=ROTATION,
 
         # set log config
         logging_instance.config_file_logger(level, file, log_type, max_size, print_console, generate_wf)
-        info('-' * 20 + 'Log Initialized Successfully' + '-' * 20)
+        logging.info('-' * 20 + 'Log Initialized Successfully' + '-' * 20)
         # set global log name
         global G_INITED_LOGGER
         G_INITED_LOGGER.append(name)
     else:
-        print('[{0}:{1}] init_log_instance has been already initialized'.format(_file(1), _line(1)))
-    return
+        print('init_log_instance has been already initialized')
+    return logging_instance.get_logger()
 
 
-def re_init_log_instance(name, level=logging.INFO, file='u_log',
-                         log_type=ROTATION, max_size=1073741824, print_console=False, generate_wf=False):
+def re_init_log_instance(name, level=logging.INFO, file='u_log', log_type=ROTATION,
+                         max_size=1073741824, print_console=False, generate_wf=False) -> logging.Logger:
     """
     re initialize logging system, parameters same to initLogInstance.
     re_init_log_instance will reset all logging parameters，
@@ -396,8 +309,8 @@ def re_init_log_instance(name, level=logging.INFO, file='u_log',
     # set log config
     G_INITED_LOGGER.append(name)
     logging_instance.config_file_logger(level, file, log_type, max_size, print_console, generate_wf)
-    info('-' * 20 + 'Log Reinitialized Successfully' + '-' * 20)
-    return
+    logging.info('-' * 20 + 'Log Reinitialized Successfully' + '-' * 20)
+    return logging_instance
 
 
 def get_inited_logger_name():
@@ -408,83 +321,7 @@ def get_inited_logger_name():
     return G_INITED_LOGGER
 
 
-def _fail_handle(msg, e):
-    if not isinstance(msg, str):
-        msg = msg.decode('utf8')
-    print('{0}\nerror:{1}'.format(msg, e))
-
-
-def backtrace_info(msg, back_trace_len=0):
-    """
-    info with backtrace support
-    """
-    try:
-        msg = _log_file_func_info(msg, back_trace_len)
-        logging_instance = _LoggerInstance()
-        logging_instance.get_logger().info(msg)
-    except u_exception.LoggerException:
-        return
-    except Exception as e:
-        _fail_handle(msg, e)
-
-
-def backtrace_debug(msg, back_trace_len=0):
-    """
-    debug with backtrace support
-    """
-    try:
-        msg = _log_file_func_info(msg, back_trace_len)
-        logging_instance = _LoggerInstance()
-        logging_instance.get_logger().debug(msg)
-    except u_exception.LoggerException:
-        return
-    except Exception as e:
-        _fail_handle(msg, e)
-
-
-def backtrace_warn(msg, back_trace_len=0):
-    """
-    warning msg with backtrace support
-    """
-    try:
-        msg = _log_file_func_info(msg, back_trace_len)
-        logging_instance = _LoggerInstance()
-        logging_instance.get_logger().warn(msg)
-    except u_exception.LoggerException:
-        return
-    except Exception as e:
-        _fail_handle(msg, e)
-
-
-def backtrace_error(msg, back_trace_len=0):
-    """
-    error msg with backtarce support
-    """
-    try:
-        msg = _log_file_func_info(msg, back_trace_len)
-        logging_instance = _LoggerInstance()
-        logging_instance.get_logger().error(msg)
-    except u_exception.LoggerException:
-        return
-    except Exception as e:
-        _fail_handle(msg, e)
-
-
-def backtrace_critical(msg, back_trace_len=0):
-    """
-    logging.CRITICAL with backtrace support
-    """
-    try:
-        msg = _log_file_func_info(msg, back_trace_len)
-        logging_instance = _LoggerInstance()
-        logging_instance.get_logger().critical(msg)
-    except u_exception.LoggerException:
-        return
-    except Exception as e:
-        _fail_handle(msg, e)
-
-
-def parse(log_line):
+def parse_log_line(log_line: str):
     """
     return a dict if the line is valid.
     Otherwise, return None
@@ -498,7 +335,7 @@ def parse(log_line):
            'srcline': 'util.py:33',
            'msg': 'this is the log content'
         }
-
+    :param log_line: log line
     """
     try:
         content = log_line[log_line.find(']'):]
@@ -518,37 +355,67 @@ def parse(log_line):
             'msg': content
         }
     except Exception:
-        return None
+        return {}
 
 
-def init_default_log(name='output'):
+def log_file_func_info(msg: str, depth=0):
+    """return log traceback info"""
+    temp_msg = ' * [%s:%s] [%s:%s] ' % (
+        os.getpid(), threading.current_thread().ident,
+        os.path.basename(sys._getframe(depth + 3).f_code.co_filename),
+        sys._getframe(depth + 3).f_lineno
+    )
+    return '{0}{1}'.format(temp_msg, msg)
+
+
+def set_log_level(level):
+    """
+    change log level during runtime
+    :param level: log level
+    :return: none
+    """
+    logger_instance = _LoggerInstance()
+    logger_instance.getlogger().setLevel(level)
+
+
+def init_default_log(name='root'):
     # 初始化log
     log_path = os.path.join(os.getcwd(), 'log')
     if not os.path.isdir(log_path):
         os.makedirs(log_path)
-    log_path = os.path.join(log_path,
-                            'output-' + time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time())) + '.log')
-    init_log_instance(name, INFO, log_path, print_console=True)
+    time_str = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))
+    log_path = os.path.join(log_path, f'{name}-{time_str}.log')
+    return init_log_instance(name, INFO, log_path, print_console=True)
 
 
-init_default_log()
-
-if __name__ == '__main__':
-    u_base.u_log.debug('中文')
-    u_base.u_log.init_log_instance('test', u_base.u_log.INFO, './test.log', print_console=True)
+def run_logging():
+    logging.debug('中文')
+    init_log_instance('test', INFO, './test.log', print_console=True)
     # test call init_log_instance twice
-    u_base.u_log.init_log_instance('test', u_base.u_log.INFO, './test.log', print_console=True)
+    init_log_instance('test', INFO, './test.log', print_console=True)
 
     # test log diff log level
-    u_base.u_log.info('test log info')
-    u_base.u_log.debug('test log debug')
-    u_base.u_log.info('中文')
-    u_base.u_log.error('test log error. {id}'.format(id=12))
+    logging.info('test log info')
+    logging.debug('test log debug')
+    logging.info('中文')
+    logging.error('test log error. {id}'.format(id=12))
 
-    u_base.u_log.re_init_log_instance(
-        're-test', u_base.u_log.INFO, './re.test.log',
-        u_base.u_log.ROTATION, 102400000, True
+    re_init_log_instance(
+        're-test', INFO, './re.test.log',
+        ROTATION, 102400000, True
     )
-    u_base.u_log.info('re:test info')
-    u_base.u_log.debug('re:test debug')
-    u_base.u_log.debug('re:中文')
+    logging.info('re:test info')
+    logging.debug('re:test debug')
+    logging.debug('re:中文')
+
+
+logger: logging.Logger = init_default_log()
+
+
+if __name__ == '__main__':
+    logger.debug('test log debug.')
+    logger.info('test log info')
+    logger.info('test log info 中文')
+
+    logger.warning('test log warning')
+    logger.error('test log error')
