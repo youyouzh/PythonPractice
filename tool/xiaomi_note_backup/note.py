@@ -3,6 +3,7 @@
 import copy
 import json
 import os
+import re
 
 import requests
 from bs4 import BeautifulSoup
@@ -12,9 +13,7 @@ from u_base.u_file import get_abs_cache_path, covert_url_to_filename
 from u_base.u_log import logger
 from u_base import u_file, u_time
 
-# 小米请求Cookie中相关的token，注意查询和创建不一样，token很容易过期
-SERVICE_TOKEN = 'jNa2f6UlbQ0iiMIayebNzWXbJI4GNaJPy7rOg7Y6IYPaI2DcCQmORKDOFupsBVdJPrxYV8MuedxjUPAmFD3L1NOub6CBcZ0HJJDFC4VqGR0UFRdnlqpT+D8/SKXDZ6jMZC1RBUQc+Go4xk+fP04tkcw2kTh4AZkXnovgoDuW/amjybslBHttYMrT+kGPLAxL6tXkSPVpo5mzmYMDeHQepRWrwXR+DCPsJk0bz6ErmVyiXak6A3ElpdDzJ9iqYyyE+LpeWxjTMzHnpAC8yGLbjQMEQRFcGxkkLbqb3JyBebLCscelqhdI6vgAf3HH6alP0G+aEq+KWizNgcqz2LbweSF148YFDmv5/2inEhDFCYIZL+XlcvrjhMqTs5+SExLNc30xu1hKTgbw6FyptcQ0tg=='
-SLH_TOKEN = 'x54e8StjpkJ+0AbsnECEPCHU4fw='
+# 小米请求Cookie很容易过期，记得及时更新
 HEADERS = {
     'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
     'sec-ch-ua-mobile': '?0',
@@ -25,7 +24,7 @@ HEADERS = {
     'Referer': 'https://i.mi.com/note/h5',
     'Origin': 'https://i.mi.com',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-    'Cookie': f'uLocale=zh_CN; iplocale=zh_CN; userId=140552443; i.mi.com_istrudev=true; i.mi.com_ph=ZiAu6BtEi2jFoJh8KnACvg==; i.mi.com_isvalid_servicetoken=true; serviceToken={SERVICE_TOKEN}; i.mi.com_slh={SLH_TOKEN}',
+    'Cookie': 'uLocale=zh_CN; iplocale=zh_CN; userId=140552443; i.mi.com_istrudev=true; i.mi.com_ph=ZiAu6BtEi2jFoJh8KnACvg==; i.mi.com_isvalid_servicetoken=true; serviceToken=jNa2f6UlbQ0iiMIayebNzWXbJI4GNaJPy7rOg7Y6IYPaI2DcCQmORKDOFupsBVdJPrxYV8MuedxjUPAmFD3L1NOub6CBcZ0HJJDFC4VqGR0UFRdnlqpT+D8/SKXDZ6jMZC1RBUQc+Go4xk+fP04tkcw2kTh4AZkXnovgoDuW/amjybslBHttYMrT+kGPLAxL6tXkSPVpo5mzmYMDeHQepRWrwXR+DCPsJk0bz6ErmVyiXak6A3ElpdDzJ9iqYyyE+LpeWxjTMzHnpAC8yGLbjQMEQRFcGxkkLbqb3JyBebLCscelqhdI6vgAf3HH6alP0G+aEq+KWizNgcqz2LbweSF148YFDmv5/2inEhDFCYJuNQoKuL663pKmIHRHcuG7b+BLirBAQE3MO+Oj1aS8iA==; i.mi.com_slh=q7GVD4S1JCphnwJjsB4d34Wg2ag=',
 }
 QUERY_FULL_NOTE_API = 'https://i.mi.com/note/full/page/'
 CREATE_NOTE_API = 'https://i.mi.com/note/note'
@@ -118,9 +117,13 @@ def create_note(title: str, note_content: str, folder_id: str,
     }
     # 分隔符去掉空格
     entry = json.dumps(entry, separators=(',', ':'))
+    # 从cookie中提取serviceToken
+    service_token_regex = re.compile(r'serviceToken=([^;]+);')
+    service_token_search = service_token_regex.search(HEADERS['Cookie'])
+
     data = {
         'entry': entry,
-        'serviceToken': SERVICE_TOKEN
+        'serviceToken': service_token_search.groups()[0]
     }
     data = urlencode(data, encoding='utf-8')
 
