@@ -84,7 +84,31 @@ def process_samsung_notes():
     return notes
 
 
+def merge_note_by_tag(note_cache_file_path: str):
+    """
+    将所有便签合并按照文件夹写到一个文件中
+    :param note_cache_file_path: 便签json缓存路径
+    :return:
+    """
+    if not os.path.isfile(note_cache_file_path):
+        notes = process_xiaomi_notes()
+        notes.extend(process_samsung_notes())
+        u_file.dump_json_to_file(note_cache_file_path, notes)
+    else:
+        notes = u_file.load_json_from_file(note_cache_file_path)
+    content_map = {}
+    notes = sorted(notes, key=lambda x: datetime.strptime(x['time'], '%Y-%m-%d %H:%M:%S').timestamp())
+    for note in notes:
+        if note['tag'] not in content_map:
+            content_map[note['tag']] = ''
+        content_map[note['tag']] += f"{note['title']}({note['time']})\n"
+        content_map[note['tag']] += f"{note['content']}\n\n\n"
+        u_file.write_content(f"result\\note-{note['tag']}.txt", content_map[note['tag']])
+
+
 if __name__ == '__main__':
-    notes = process_xiaomi_notes()
-    notes.extend(process_samsung_notes())
-    u_file.dump_json_to_file(r'result\notes.json', notes)
+    cache_file_path = r'result\notes.json'
+    # notes = process_xiaomi_notes()
+    # notes.extend(process_samsung_notes())
+    # u_file.dump_json_to_file(cache_file_path, notes)
+    merge_note_by_tag(cache_file_path)
