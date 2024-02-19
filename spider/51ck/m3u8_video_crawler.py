@@ -22,7 +22,8 @@ _REQUESTS_KWARGS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/114.0.0.0 Safari/537.36',
         'sec-ch-ua': '"Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"',
-        'Referer': 'https://missav.com/inct-006',
+        'Referer': 'https://missav.com',
+        # 'Referer': 'https://javplayer.me/',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': 'Windows',
         'sec-fetch-dest': 'empty',
@@ -75,7 +76,10 @@ def extract_ts_urls(m3u8_url: str, m3u8_content: str) -> List[str]:
         return []
     else:
         lines = m3u8_content.split('\n')
-        ts_urls: List[str] = [urljoin(m3u8_url, line.rstrip()) for line in lines if '.ts' in line.rstrip()]
+        ts_urls: List[str] = []
+        for line in lines:
+            if '.ts' in line or '.txt' in line or '.jpeg' in line:
+                ts_urls.append(urljoin(m3u8_url, line.rstrip()))
     if len(ts_urls) == 0:
         log.error('extract ts urls failed.')
         return []
