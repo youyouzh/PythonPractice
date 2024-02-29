@@ -287,7 +287,7 @@ def download_file(url, filename, path=os.path.curdir, replace=False, with_progre
     ready_dir(file_path)
 
     # 如果文件已经下载并且不替换，则直接结束
-    if os.path.exists(file_path) and not replace:
+    if os.path.exists(file_path) and os.path.getsize(file_path) >= 100 and not replace:
         logger.info('The file is exist and not replace: {}'.format(file_path))
         return True
 
