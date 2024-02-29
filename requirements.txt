@@ -13,12 +13,3 @@ cloudscraper
 # AES DES decode for windows
 pycryptodome
 xmltodict
-
-# for image classification, deep learning libs
-pandas
-numpy
-scipy
-matplotlib
-opencv-python
-scikit-image
-scikit-learn
