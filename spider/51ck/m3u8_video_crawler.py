@@ -22,8 +22,8 @@ _REQUESTS_KWARGS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/114.0.0.0 Safari/537.36',
         'sec-ch-ua': '"Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"',
-        'Referer': 'https://missav.com',
-        # 'Referer': 'https://javplayer.me/',
+        # 'Referer': 'https://missav.com',
+        'Referer': 'https://javplayer.me/',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': 'Windows',
         'sec-fetch-dest': 'empty',
@@ -120,6 +120,9 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=10):
         future = pool.submit(u_file.download_file, ts_url, filename, save_dir, **_REQUESTS_KWARGS)
         tasks.append(future)
 
+    # 等待所有线程完成
+    wait(tasks, return_when=ALL_COMPLETED)
+
     # 检查是否所有文件都下载完成，并记录未完成下载的ts_url
     not_finished_ts_urls = get_not_finish_ts_urls(ts_urls, save_dir)
 
@@ -128,13 +131,11 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=10):
         log.info('not finished ts_urls size: {}, retry times: {}'.format(len(not_finished_ts_urls), retry_count))
         download_ts_file_with_pool(not_finished_ts_urls, save_dir, retry_count - 1)
 
-    # 等待所有线程完成
-    wait(tasks, return_when=ALL_COMPLETED)
     not_finished_ts_urls = get_not_finish_ts_urls(ts_urls, save_dir)
     if not_finished_ts_urls:
         # 存在部分ts文件没下载成功则结束，不进行合并
         log.error('some ts file is download fail. size: {}'.format(len(not_finished_ts_urls)))
-        exit(-1)
+        return False
     log.info('all ts file download success.')
 
 
@@ -168,7 +169,7 @@ def merge_ts_file_by_ffmpeg(m3u8_save_path: str, merge_video_path: str):
     :param merge_video_path: 合并生成视频文件保存路径
     :return:
     """
-    m3u8_save_path = os.path.abspath(m3u8_save_path)  # 命令行允许需要完全路径
+    m3u8_save_path = os.path.abspath(m3u8_save_path)  # 命令行运行需要完全路径，注意路径中不能又星号*
     merge_command = r'{} -allowed_extensions ALL -y -i "{}" -c copy "{}"'\
         .format(FFMPEG_PATH, m3u8_save_path, merge_video_path).replace('\\', '\\\\')
     log.info('begin merge file by ffmpeg: {}'.format(merge_command))
