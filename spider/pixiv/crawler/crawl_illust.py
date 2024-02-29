@@ -1,16 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import json
-import os
 import datetime
+import json
 import time
-import threadpool
-import re
 
 import u_base.u_log as log
-from spider.pixiv.pixiv_api import AppPixivAPI
 from spider.pixiv.mysql.db import save_illustration
-
+from spider.pixiv.pixiv_api import AppPixivAPI
 
 CONFIG = json.load(open(r'config\config.json', encoding='utf-8'))
 _USERNAME = CONFIG.get('username')
