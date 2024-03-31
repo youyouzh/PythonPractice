@@ -1,3 +1,4 @@
+import copy
 import re
 import os
 import json
@@ -6,7 +7,7 @@ from typing import List
 
 import u_base.u_file as u_file
 import u_base.u_log as log
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
 
 _REQUESTS_KWARGS = {
@@ -22,8 +23,10 @@ _REQUESTS_KWARGS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/114.0.0.0 Safari/537.36',
         'sec-ch-ua': '"Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"',
-        # 'Referer': 'https://missav.com',
-        'Referer': 'https://javplayer.me/',
+        'Origin': 'https://missav.com',  # dynamic set by request url
+        'Referer': 'https://missav.com',
+        # 'Referer': 'https://javplayer.me/',
+        # 'Origin': 'https://javplayer.me/',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': 'Windows',
         'sec-fetch-dest': 'empty',
@@ -48,6 +51,15 @@ def get_ts_save_dir(m3u8_url: str):
     save_dir = os.path.join(r'result\ts', u_file.covert_url_to_filename(m3u8_url))
     u_file.ready_dir(save_dir, True)
     return save_dir
+
+
+def get_request_headers(base_url: str):
+    headers = copy.deepcopy(_REQUESTS_KWARGS['headers'])
+    # set Origin and Refer
+    parsed_url = urlparse(base_url)
+    headers['Origin'] = parsed_url.scheme + '://' + parsed_url.netloc
+    headers['Referer'] = parsed_url.scheme + '://' + parsed_url.netloc + parsed_url.path
+    return headers
 
 
 def get_ts_download_filename(ts_url: str):
