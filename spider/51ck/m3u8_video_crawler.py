@@ -5,6 +5,12 @@ import json
 
 from typing import List
 
+import sys
+
+import requests
+
+sys.path.append(r'D:\work\github\PythonPractice')
+
 import u_base.u_file as u_file
 import u_base.u_log as log
 from urllib.parse import urljoin, urlparse
@@ -34,11 +40,13 @@ _REQUESTS_KWARGS = {
         'sec-fetch-site': 'cross-site'
     }
 }
+SUPPORT_TS_TYPES = ['.ts', '.txt', '.jpeg', '.jpg']
 DOWNLOAD_THREAD_POOL_SIZE = 8   # 下载线程池数量
 REPLACE_SAME_NAME_VIDEO = False   # 替换同名视频
+DOWNLOAD_CHUNK_SIZE = 10 * 1024 * 1024
 FFMPEG_PATH = r'D:\work\software\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe'
 DOWNLOAD_VIDEOS = [
-# ('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=11012.m3u8'),
+# ('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=110112.m3u8'),
 ]
 
 
@@ -90,8 +98,9 @@ def extract_ts_urls(m3u8_url: str, m3u8_content: str) -> List[str]:
         lines = m3u8_content.split('\n')
         ts_urls: List[str] = []
         for line in lines:
-            if '.ts' in line or '.txt' in line or '.jpeg' in line:
-                ts_urls.append(urljoin(m3u8_url, line.rstrip()))
+            for ts_type in SUPPORT_TS_TYPES:
+                if ts_type in line:
+                    ts_urls.append(urljoin(m3u8_url, line.rstrip()))
     if len(ts_urls) == 0:
         log.error('extract ts urls failed.')
         return []
@@ -151,6 +160,40 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=10):
     log.info('all ts file download success.')
 
 
+# javhub.net 下载高清视频
+def download_mp4(video_url: str, save_filepath: str):
+    response = requests.get(video_url, stream=True, **_REQUESTS_KWARGS)
+    if response.status_code != 200:
+        log.error('download email fail. code: {}.'.format(response.status_code))
+        return False
+    log.info('download file save path: {}'.format(save_filepath))
+
+    # 打开文件准备写入
+    with open(save_filepath, 'wb') as file_handler:
+        # 初始化已下载大小
+        downloaded = 0
+        print_downloaded = 0  # 记录进度打印时的大小
+
+        # 以1024字节（1MB）的块大小进行读取
+        for data in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+            if not data:
+                continue
+            # 更新已下载大小
+            downloaded += len(data)
+
+            # 将数据写入文件
+            file_handler.write(data)
+
+            # 打印已下载的数据量（例如，每下载1MB打印一次）
+            # 将下载进度信息写入文件
+            if downloaded - print_downloaded >= DOWNLOAD_CHUNK_SIZE:
+                download_size_desc = str(int(downloaded / (1024 * 1024))) + 'MB'
+                log.info(f"已下载 {download_size_desc}")
+                print_downloaded = downloaded
+    log.info('download finished: {}'.format(video_url))
+    return True
+
+
 def download_decrypt_key(m3u8_url: str, m3u8_content: str, key_save_dir: str):
     """
     下载m3u8视频的解密密钥，如果不需要解密，这不用下载
@@ -177,6 +220,9 @@ def merge_ts_file_by_ffmpeg(m3u8_save_path: str, merge_video_path: str):
         -i xxx.m3u8 后面加输入文件名，也可以输入ts文件名
         -c copy c表示输出文件采用的编码器，后面跟copy，表示直接复制，不重新编码
         -y 自动覆盖文件
+    ffmpeg下载地址：
+    https://ffmpeg.org/download.html
+    https://www.gyan.dev/ffmpeg/builds/
     :param m3u8_save_path: m3u8文件夹路径
     :param merge_video_path: 合并生成视频文件保存路径
     :return:
@@ -244,5 +290,8 @@ def download_with_mp4_url(title, mp4_url):
 
 
 if __name__ == '__main__':
+    merge_video_path = os.path.join(r'result\video', 'test.mp4')
+    merge_video_path = os.path.abspath('test.mp4')
+    download_mp4('https://21.2babes.com/mp4/cf5180789578eed165633803e9d3d29e.mp4?md5=sSX9ndcfyz5CrrDmMbDBQQ&expires=1717023719', merge_video_path)
     for (name, url) in DOWNLOAD_VIDEOS:
         download_with_m3u8_url(name, url)
