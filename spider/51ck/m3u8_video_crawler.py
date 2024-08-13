@@ -27,10 +27,8 @@ _REQUESTS_KWARGS = {
     # https://missav.com/ header 必须包含Referer
     'headers': {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                      'Chrome/114.0.0.0 Safari/537.36',
-        'sec-ch-ua': '"Not.A/Brand";v="8", "Chromium";v="114", "Google Chrome";v="114"',
-        'Origin': 'https://missav.com',  # dynamic set by request url
-        'Referer': 'https://missav.com',
+                      'Chrome/127.0.0.0 Safari/537.36',
+        'sec-ch-ua': '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
         # 'Referer': 'https://javplayer.me/',
         # 'Origin': 'https://javplayer.me/',
         'sec-ch-ua-mobile': '?0',
@@ -40,10 +38,13 @@ _REQUESTS_KWARGS = {
         'sec-fetch-site': 'cross-site'
     }
 }
-SUPPORT_TS_TYPES = ['.ts', '.txt', '.jpeg', '.jpg']
+PRESET_ORIGIN_MAP = {
+    'ruznuon.com': 'https://emturbovid.com'
+}
+SUPPORT_TS_TYPES = ['.ts', '.txt', '.jpeg', '.jpg', '.png']
 DOWNLOAD_THREAD_POOL_SIZE = 8   # 下载线程池数量
 REPLACE_SAME_NAME_VIDEO = False   # 替换同名视频
-DOWNLOAD_CHUNK_SIZE = 10 * 1024 * 1024
+DOWNLOAD_CHUNK_SIZE = 1024 * 1024
 FFMPEG_PATH = r'D:\work\software\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe'
 DOWNLOAD_VIDEOS = [
 # ('xxx', 'https://ap-drop-monst.mushroomtrack.com/bcdn_token=xxx&token_path=110112.m3u8'),
@@ -61,13 +62,19 @@ def get_ts_save_dir(m3u8_url: str):
     return save_dir
 
 
-def get_request_headers(base_url: str):
-    headers = copy.deepcopy(_REQUESTS_KWARGS['headers'])
+def get_request_kwargs(base_url: str):
+    kwargs = copy.deepcopy(_REQUESTS_KWARGS)
     # set Origin and Refer
     parsed_url = urlparse(base_url)
-    headers['Origin'] = parsed_url.scheme + '://' + parsed_url.netloc
-    headers['Referer'] = parsed_url.scheme + '://' + parsed_url.netloc + parsed_url.path
-    return headers
+    # use preset origin config
+    for key, value in PRESET_ORIGIN_MAP.items():
+        if key in base_url:
+            kwargs['headers']['Origin'] = value
+            kwargs['headers']['Referer'] = value
+            return kwargs
+    kwargs['headers']['Origin'] = parsed_url.scheme + '://' + parsed_url.netloc
+    kwargs['headers']['Referer'] = parsed_url.scheme + '://' + parsed_url.netloc + parsed_url.path
+    return kwargs
 
 
 def get_ts_download_filename(ts_url: str):
@@ -138,7 +145,7 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=10):
     tasks = []
     for ts_url in ts_urls:
         filename = u_file.get_file_name_from_url(ts_url)
-        future = pool.submit(u_file.download_file, ts_url, filename, save_dir, **_REQUESTS_KWARGS)
+        future = pool.submit(u_file.download_file, ts_url, filename, save_dir, **get_request_kwargs(ts_url))
         tasks.append(future)
 
     # 等待所有线程完成
@@ -161,8 +168,13 @@ def download_ts_file_with_pool(ts_urls: List[str], save_dir, retry_count=10):
 
 
 # javhub.net 下载高清视频
-def download_mp4(video_url: str, save_filepath: str):
-    response = requests.get(video_url, stream=True, **_REQUESTS_KWARGS)
+def download_mp4(video_title: str, video_url: str):
+    save_filepath = os.path.join(r'result\video', video_title + '.mp4')
+    save_filepath = os.path.abspath(save_filepath)
+    if os.path.isfile(save_filepath):
+        log.info('file already exists. filepath: {}'.format(save_filepath))
+        return True
+    response = requests.get(video_url, stream=True, **get_request_kwargs(video_url))
     if response.status_code != 200:
         log.error('download email fail. code: {}.'.format(response.status_code))
         return False
@@ -209,7 +221,7 @@ def download_decrypt_key(m3u8_url: str, m3u8_content: str, key_save_dir: str):
         return
     decrypt_key_filename = search_result.groups()[0]
     decrypt_key_url = urljoin(m3u8_url, search_result.groups()[0])
-    u_file.download_file(decrypt_key_url, decrypt_key_filename, key_save_dir, **_REQUESTS_KWARGS)
+    u_file.download_file(decrypt_key_url, decrypt_key_filename, key_save_dir, **get_request_kwargs(m3u8_url))
 
 
 def merge_ts_file_by_ffmpeg(m3u8_save_path: str, merge_video_path: str):
@@ -255,7 +267,7 @@ def download_with_m3u8_url(title, m3u8_url):
     save_dir = get_ts_save_dir(m3u8_url)
     m3u8_save_path = os.path.join(save_dir, 'index.m3u8')
     # request get m3u8 file content
-    m3u8_content = u_file.get_content_with_cache(m3u8_url, m3u8_save_path, **_REQUESTS_KWARGS)
+    m3u8_content = u_file.get_content_with_cache(m3u8_url, m3u8_save_path, **get_request_kwargs(m3u8_url))
     if not m3u8_content:
         log.error('get m3u8 content failed: {}'.format(m3u8_url))
         return
@@ -290,8 +302,8 @@ def download_with_mp4_url(title, mp4_url):
 
 
 if __name__ == '__main__':
-    merge_video_path = os.path.join(r'result\video', 'test.mp4')
-    merge_video_path = os.path.abspath('test.mp4')
-    download_mp4('https://21.2babes.com/mp4/cf5180789578eed165633803e9d3d29e.mp4?md5=sSX9ndcfyz5CrrDmMbDBQQ&expires=1717023719', merge_video_path)
     for (name, url) in DOWNLOAD_VIDEOS:
-        download_with_m3u8_url(name, url)
+        if '.mp4' in url:
+            download_mp4(name, url)
+        else:
+            download_with_m3u8_url(name, url)
