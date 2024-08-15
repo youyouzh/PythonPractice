@@ -117,7 +117,7 @@ def base_illustration_image(illustration: Illustration) -> dict:
 
 
 def query_top_total_bookmarks(count=100000, min_id=1, min_total_bookmarks=5000) -> list:
-    cache_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), r"cache\top_total_bookmarks.json")
+    cache_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), r"cache\top_total_bookmarks-{}.json".format(min_id))
     if os.path.isfile(cache_file):
         return json.load(open(cache_file, encoding='utf-8'))
     results = session.query(Illustration.id, Illustration.user_id, Illustration.total_bookmarks)\
@@ -125,7 +125,7 @@ def query_top_total_bookmarks(count=100000, min_id=1, min_total_bookmarks=5000) 
         .filter(Illustration.id >= min_id)\
         .filter(Illustration.total_bookmarks >= min_total_bookmarks)\
         .order_by(Illustration.total_bookmarks.desc()).limit(count).all()
-    results = [dict(zip(v.keys(), v)) for v in results]
+    results = [v._asdict() for v in results]
     json.dump(results, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     return results
 
@@ -139,7 +139,7 @@ def query_by_user_id(user_id, min_total_bookmarks=5000) -> list:
         .filter(Illustration.user_id == user_id)\
         .filter(Illustration.total_bookmarks >= min_total_bookmarks)\
         .order_by(Illustration.total_bookmarks.desc()).all()
-    results = [dict(zip(v.keys(), v)) for v in results]
+    results = [v._asdict() for v in results]
     json.dump(results, open(cache_file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     return results
 
