@@ -5,15 +5,17 @@ import os
 import sqlalchemy as sql
 import pymysql
 import warnings
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 
-import u_base.u_log as log
+from u_base.u_log import logger as log
 from spider.pixiv.arrange.file_util import get_illust_id
 from spider.pixiv.pixiv_api import PixivError
 from .entity import Illustration, IllustrationTag, IllustrationImage, PixivUser
 
 engine = sql.create_engine('mysql+pymysql://uusama:uusama@localhost:3306/pixiv?charset=utf8mb4')
-session = sessionmaker(bind=engine)()
+SessionLocal: sessionmaker = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
+
+session = scoped_session(SessionLocal)
 
 # 忽略掉mysql执行insert ignore时的警告信息
 warnings.filterwarnings('ignore', category=pymysql.Warning)
