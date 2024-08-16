@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-import u_base.u_log as log
+from u_base.u_log import logger as log
 import u_base.u_file as u_file
 from spider.pixiv.arrange.file_util import collect_illust, get_illust_id
 from spider.pixiv.mysql.db import session, Illustration, update_illustration_tag, update_user_tag

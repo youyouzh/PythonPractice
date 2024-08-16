@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image
 
 
-import u_base.u_log as log
+from u_base.u_log import logger as log
 
 __all__ = [
     'show_color_space_3d',

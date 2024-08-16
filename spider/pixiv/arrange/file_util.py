@@ -4,7 +4,7 @@
 
 import os
 import re
-import u_base.u_log as log
+from u_base.u_log import logger as log
 import u_base.u_file as u_file
 
 

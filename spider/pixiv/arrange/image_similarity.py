@@ -3,7 +3,7 @@
 import os
 import numpy as np
 import cv2
-import u_base.u_log as log
+from u_base.u_log import logger as log
 import u_base.u_file as u_file
 
 from spider.pixiv.arrange.image_util import get_image
