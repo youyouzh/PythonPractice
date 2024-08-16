@@ -4,13 +4,18 @@ import json
 import os
 import re
 import time
-import threadpool
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED, FIRST_COMPLETED
 
-import u_base.u_log as log
+from u_base.u_log import logger as log
 from spider.pixiv.mysql.db import session, Illustration, IllustrationTag, IllustrationImage, \
     query_top_total_bookmarks, is_download_user, update_user_tag, query_by_user_id, get_pixiv_user
 from spider.pixiv.pixiv_api import AppPixivAPI, PixivError
 from spider.pixiv.arrange.file_util import get_illust_id
+
+# 下载并行线程池配置
+DOWNLOAD_THREAD_COUNT = 4   # 线程池线程数量
+DOWNLOAD_THREAD_POOL = ThreadPoolExecutor(DOWNLOAD_THREAD_COUNT)
+DOWNLOADING_WAIT_SECONDS = 5  # 等待时间
 
 CONFIG = json.load(open(os.path.join(os.getcwd(), r'config\config.json')))
 _REFRESH_TOKEN = CONFIG.get('token')
@@ -44,7 +49,7 @@ def download_task(pixiv_api, directory, url=None, illustration_image: Illustrati
         os.makedirs(directory)
     if url is None or illustration_image is not None:
         # 通过illustration_image下载
-        illustration_tags = session.query(IllustrationTag)\
+        illustration_tags = session().query(IllustrationTag)\
             .filter(IllustrationTag.illust_id == illustration_image.illust_id).all()
         url = illustration_image.image_url_origin
         basename = os.path.basename(url).split('.')
@@ -70,21 +75,6 @@ def download_task(pixiv_api, directory, url=None, illustration_image: Illustrati
     log.info('download image end. cast: {}, url: {}'.format(time.time() - begin_time, url))
 
 
-# 使用线程池并行下载
-def download_by_pool(directory, urls=None):
-    # 创建文件夹
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    pixiv_api = AppPixivAPI(**_REQUESTS_KWARGS)
-    pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
-    log.info('begin download image, url size: ' + str(len(urls)))
-    pool = threadpool.ThreadPool(8)
-    params = map(lambda v: (None, {'pixiv_api': pixiv_api, 'directory': directory, 'url': v}), urls)
-    task_list = threadpool.makeRequests(download_task, params)
-    [pool.putRequest(task) for task in task_list]
-    pool.wait()
-
-
 # 通过pixiv_id下载图片，从本地数据查找URL，然后下载图片
 def download_by_illustration_id(directory: str, illustration_id: int, **kwargs):
     default_kwargs = {
@@ -104,38 +94,38 @@ def download_by_illustration_id(directory: str, illustration_id: int, **kwargs):
     pixiv_api.auth(refresh_token=_REFRESH_TOKEN)
 
     log.info('begin download illust by illustration_id: {}'.format(illustration_id))
-    illustration: Illustration = session.query(Illustration).get(illustration_id)
+    illustration: Illustration = session().query(Illustration).get(illustration_id)
     if illustration is None:
         log.error('The illustration(id: {}) is not exist.'.format(illustration_id))
-        return
-    illustration_images: [IllustrationImage] = session.query(IllustrationImage)\
+        return False
+    illustration_images: [IllustrationImage] = session().query(IllustrationImage)\
         .filter(IllustrationImage.illust_id == illustration_id).all()
     if illustration_images is None or len(illustration_images) == 0:
         log.error('The illustration(id: {}) image is not exist.'.format(illustration_id))
-        return
+        return False
 
     # 检查画的页数，页数太多一般是漫画跳过
     if len(illustration_images) > kwargs.get('skip_max_page_count'):
         log.warn('The illustration(id: {}) images are more than {}.'
                  .format(illustration_id, kwargs.get('skip_max_page_count')))
-        return
+        return False
 
     # 过滤插画长度和宽度
     if illustration.width < kwargs.get('skip_min_width') or illustration.height < kwargs.get('skip_min_height'):
         log.warn('The illustration(id: {}) image is small, width: {}/{}, height: {}/{}'
                  .format(illustration_id, illustration.width, kwargs.get('skip_min_width'),
                          illustration.height, kwargs.get('skip_min_height')))
-        return
+        return False
 
     # 已经标记为忽略的不下载
     if kwargs.get('skip_ignore') and (illustration.tag == 'ignore' or illustration.tag == 'small'):
         log.warn('The illustration(id: {}) is ignore or small.'.format(illustration_id))
-        return
+        return False
 
     # 不下载r-18图片
     if kwargs.get('skip_r_18') and illustration.r_18 == 1:
         log.info('The illustration(id: {}) is R-18 and skip it.'.format(illustration_id))
-        return
+        return False
 
     # 按照收藏点赞人数分文件夹
     if kwargs.get('spilt_bookmark'):
@@ -153,14 +143,16 @@ def download_by_illustration_id(directory: str, illustration_id: int, **kwargs):
             log.info('The illustration_image(id: {}) has been downloaded.'.format(illustration_id))
             continue
         log.info('process illust_id: {}, total_bookmarks: {}, image_url: {}'
-                 .format(illustration_image.illust_id,illustration.total_bookmarks, illustration_image.image_url_origin))
+                 .format(illustration_image.illust_id, illustration.total_bookmarks,
+                         illustration_image.image_url_origin))
         download_task(pixiv_api, directory, illustration_image=illustration_image)
         illustration_image.process = 'DOWNLOADED'
-        session.merge(illustration_image)
-        session.commit()
+        session().merge(illustration_image)
+        session().commit()
         log.info('end process illust_id: {}'.format(illustration_image.illust_id))
     log.info('end download illust by illustration_id: {}, illust image size: {}'
              .format(illustration_id, len(illustration_images)))
+    return True
 
 
 def download_task_by_illust_ids(save_dir, illust_ids: list):
@@ -213,9 +205,9 @@ def download_by_user_id(save_directory, user_id: int, min_total_bookmarks=5000, 
 # 下载某个tag标签的图片，基于本地数据库
 def download_by_tag(save_directory, tag: str, min_total_bookmarks=5000, **kwargs):
     log.info('begin download illust by tag: {}'.format(tag))
-    illustrations: [Illustration] = session.query(Illustration) \
+    illustrations: [Illustration] = session().query(Illustration) \
         .filter(Illustration.id.in_(
-            session.query(IllustrationTag.illust_id).filter(IllustrationTag.name == tag))) \
+            session().query(IllustrationTag.illust_id).filter(IllustrationTag.name == tag))) \
         .filter(Illustration.total_bookmarks >= min_total_bookmarks) \
         .order_by(Illustration.total_bookmarks.desc()).all()
     log.info('The illustration of tag: {} count is: {}'.format(tag, len(illustrations)))
@@ -225,24 +217,39 @@ def download_by_tag(save_directory, tag: str, min_total_bookmarks=5000, **kwargs
 
 
 # 下载TOP收藏图片
-def download_top(**kwargs):
-    directory = r"result/illusts-2022"
-    top_illusts = query_top_total_bookmarks(count=50000, min_id=91391283)
+def download_top_with_pool(**kwargs):
+    directory = r"result/illusts-2024"
+    # top_illusts = query_top_total_bookmarks(count=50000, min_id=98580348)
+    top_illusts = query_top_total_bookmarks(count=50000, min_id=117045345)   # 2024-08-16爬取
     log.info("download illusts top size: {}".format(len(top_illusts)))
+    active_tasks = []
+    download_illustration_ids = set(map(lambda x: x.split('_')[0], os.listdir(directory)))
     for top_illust in top_illusts:
-        if top_illust['total_bookmarks'] > 18424:
-            # 用于下载失败后跳过已经下载的图片
-            log.info('skip illust: {}'.format(top_illust['id']))
+        # 快速通过文件检查是否已经下载过
+        if str(top_illust.get('id')) in download_illustration_ids:
+            log.info('The illust was downloaded. illust_id: {}'.format(top_illust.get('id')))
             continue
-        log.info("begin download illust: {}".format(top_illust))
-        download_by_illustration_id(directory, top_illust["id"], **kwargs)
-        log.info('end download illust: {}'.format(top_illust))
+
+        # 检查当前在运行中的下载任务是否超过线程池数量，如果超过则等待
+        if len(active_tasks) >= DOWNLOAD_THREAD_COUNT:
+            done_futures, not_done_futures = wait(active_tasks, timeout=120, return_when=FIRST_COMPLETED)
+            # 移除已完成的任务
+            log.info('---> done task size: {}, not done task size: {}'.format(len(done_futures), len(not_done_futures)))
+            for done_future in done_futures:
+                # 检查是否发生异常，然后打印异常
+                if done_future.exception() is not None:
+                    log.error(done_future.exception())
+                # 移除已完成的任务
+                active_tasks.remove(done_future)
+        future = DOWNLOAD_THREAD_POOL.submit(download_by_illustration_id, directory, top_illust.get('id'), **kwargs)
+        active_tasks.append(future)
+    wait(active_tasks, return_when=ALL_COMPLETED)
 
 
 def download_task_by_user_id(user_id=None, illust_id=None, save_dir=None, check_user_download=True, **kwargs):
     # 通过插画id查询对应的用户id
     if illust_id is not None:
-        illust: Illustration = session.query(Illustration).get(illust_id)
+        illust: Illustration = session().query(Illustration).get(illust_id)
         if illust is not None:
             user_id = illust.user_id
 
@@ -293,7 +300,7 @@ def refresh_sub_collect_user(collect_user_dir: str):
 
 if __name__ == '__main__':
     # download_by_pool()
-    download_top(spilt_bookmark=False, skip_min_width=1000, skip_min_height=1000, skip_r_18=True)
+    download_top_with_pool(spilt_bookmark=False, skip_min_width=800, skip_min_height=800, skip_r_18=True)
     # tag = 'プリコネ'
     # download_by_tag(os.path.join(r'.\result\by-tag', tag), tag)
     # download_by_illustration_id(r'.\result\illust', illustration_id=43302392, skip_ignore=False, skip_download=False)
