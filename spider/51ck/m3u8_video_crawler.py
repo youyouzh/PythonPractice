@@ -303,7 +303,7 @@ def download_with_mp4_url(title, mp4_url):
 
 if __name__ == '__main__':
     for (name, url) in DOWNLOAD_VIDEOS:
-        if '.mp4' in url:
+        if '.mp4' in url and 'phncdn' not in url:
             download_mp4(name, url)
         else:
             download_with_m3u8_url(name, url)
