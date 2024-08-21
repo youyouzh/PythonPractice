@@ -4,7 +4,7 @@ import datetime
 import json
 import time
 
-import u_base.u_log as log
+from u_base.u_log import logger as log
 from spider.pixiv.mysql.db import save_illustration
 from spider.pixiv.pixiv_api import AppPixivAPI
 

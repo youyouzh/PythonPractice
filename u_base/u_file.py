@@ -308,7 +308,7 @@ def download_file(url, filename, path=os.path.curdir, replace=False, with_progre
                 for chunk in response.iter_content(chunk_size=1024):
                     if chunk:
                         out_file.write(chunk)
-                        logger.info('download 1034 success.')
+                        # logger.info('download 1024 success.')
         else:
             with open(file_path, 'wb') as out_file:
                 out_file.write(response.content)

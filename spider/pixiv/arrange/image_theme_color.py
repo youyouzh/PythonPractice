@@ -10,7 +10,7 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-import u_base.u_log as log
+from u_base.u_log import logger as log
 from spider.pixiv.arrange.file_util import get_illust_id
 
 

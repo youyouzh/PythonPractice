@@ -6,7 +6,7 @@ import shutil
 import pandas as pd
 
 import u_base.u_file as u_file
-import u_base.u_log as log
+from u_base.u_log import logger as log
 from spider.pixiv.arrange.file_util import get_illust_id, get_cache_path
 from spider.pixiv.mysql.db import Illustration, query_by_user_id, get_illustration_by_id, is_download_user
 
