@@ -4,6 +4,7 @@
 import re
 import json
 from datetime import datetime, date
+from functools import wraps
 from typing import Optional, Type, List
 
 from sqlalchemy import Column, DateTime, String, Integer, Date, BigInteger, Boolean, text, Text, CLOB
@@ -12,42 +13,46 @@ from contextlib import contextmanager
 from sqlalchemy.orm import Session, scoped_session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, DeclarativeMeta
-from base.config import load_config
-from base.log import logger
 
 
-CONFIG = {
-    # oracle+cx_oracle://your_username:your_password@your_host:your_port/service_name
-    'SQLALCHEMY_DATABASE_URI': r'sqlite:///cache/info.db',
-}
-load_config(CONFIG)
+# oracle+cx_oracle://your_username:your_password@your_host:your_port/service_name
+SQLALCHEMY_DATABASE_URI = r'sqlite:///cache/info.db'
 
 engine = create_engine(
-    CONFIG['SQLALCHEMY_DATABASE_URI'],
+    SQLALCHEMY_DATABASE_URI,
     # json_serializer=lambda obj: json.dumps(obj, ensure_ascii=False),  # oracle不支持
 )
 
 SessionLocal: sessionmaker = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
 Base: DeclarativeMeta = declarative_base()
+# 多线程兼容的session，通过scoped_session()创建session实例
 scoped_session = scoped_session(SessionLocal)
 
 
-@contextmanager
-def session_scope():
+def with_session(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        with scoped_session() as session:
+            try:
+                result = f(session, *args, **kwargs)
+                session.commit()
+                return result
+            except:
+                session.rollback()
+                raise
+    return wrapper
+
+
+def transactional(func):
     """
-    提供一个上下文管理器，用于管理session的生命周期。
-    在with语句块内，你可以使用session进行数据库操作。
-    当离开with语句块时，session会自动提交或回滚，并关闭。
+    基于session的事务封装，用于数据库变更时的处理
+    :param func:
+    :return:
     """
-    session = scoped_session()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with session_scope() as session:
+            return func(session, *args, **kwargs)
 
 
 class BaseModel(Base):
@@ -125,7 +130,7 @@ class BaseRepository(object):
         self.model = model
 
     def get_session(self) -> Session:
-        return session_manager.get_session()
+        return scoped_session()
 
     def get_by_id(self, id: int) -> Optional[BaseModel]:
         return self.get_session().query(self.model).get(id)
