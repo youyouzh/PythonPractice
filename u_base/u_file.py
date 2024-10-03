@@ -230,10 +230,11 @@ def read_content(file_path):
     return content
 
 
-def read_file_as_list(file_path: str) -> list:
+def read_file_as_list(file_path: str, remove_repeat: bool = True) -> list:
     """
     按行读取文件，并返回list，每一个元素是每一行记录
     :param file_path: 文件绝对地址
+    :param remove_repeat: 是否去除重复元素
     :return:
     """
     if not os.path.isfile(file_path):
@@ -241,12 +242,14 @@ def read_file_as_list(file_path: str) -> list:
         return []
     file_handle = open(file_path, 'r', encoding='utf-8')
     line = file_handle.readline()
-    contents = set()
+    contents = []
     while line:
         line = line.strip('\n')
-        contents.add(line)
+        contents.append(line)
         line = file_handle.readline()
     file_handle.close()
+    if remove_repeat:
+        contents = list(set(contents))
     logger.info('read file end. list size: {}'.format(len(contents)))
     return list(contents)
 
