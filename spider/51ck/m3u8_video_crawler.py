@@ -39,7 +39,8 @@ _REQUESTS_KWARGS = {
     }
 }
 PRESET_ORIGIN_MAP = {
-    'ruznuon.com': 'https://emturbovid.com'
+    'ruznuon.com': 'https://emturbovid.com',
+    '.*.skyearth.xyz': 'https://javplayer.me',
 }
 SUPPORT_TS_TYPES = ['.ts', '.txt', '.jpeg', '.jpg', '.png']
 DOWNLOAD_THREAD_POOL_SIZE = 8   # 下载线程池数量
@@ -68,7 +69,7 @@ def get_request_kwargs(base_url: str):
     parsed_url = urlparse(base_url)
     # use preset origin config
     for key, value in PRESET_ORIGIN_MAP.items():
-        if key in base_url:
+        if re.match(key, base_url):
             kwargs['headers']['Origin'] = value
             kwargs['headers']['Referer'] = value
             return kwargs
@@ -214,12 +215,13 @@ def download_decrypt_key(m3u8_url: str, m3u8_content: str, key_save_dir: str):
     :param key_save_dir: key文件保存路径
     :return: ts下载地址列表
     """
-    decrypt_content_regex = re.compile(r'EXT-X-KEY:METHOD=AES-128,URI="(\w+.ts)",IV=0x(\w+)')
+    decrypt_content_regex = re.compile(r'EXT-X-KEY:METHOD=AES-128,URI="(.*\.[tskey]+)",IV=0x(\w+)')
     search_result = decrypt_content_regex.search(m3u8_content)
     if not search_result or not search_result.groups():
         log.warn('Can not find any AES decrypt URI.')
         return
     decrypt_key_filename = search_result.groups()[0]
+    decrypt_key_filename = os.path.basename(decrypt_key_filename)
     decrypt_key_url = urljoin(m3u8_url, search_result.groups()[0])
     u_file.download_file(decrypt_key_url, decrypt_key_filename, key_save_dir, **get_request_kwargs(m3u8_url))
 
@@ -287,7 +289,10 @@ def download_with_m3u8_url(title, m3u8_url):
     # m3u8文件中的ts路径可能有参数，去掉参数，否则会影响ffmpeg合并视频
     process_m3u8_save_path = os.path.join(save_dir, 'index-simple.m3u8')
     meu8_content = u_file.read_content(m3u8_save_path)
+    # 去掉ts路由后面的参数，以免ffmpeg合并的时候，出现找不到对应ts文件的情况
     meu8_content = re.sub(r'\.ts\?\S+', '.ts', meu8_content)
+    # 去掉url中的前缀
+    meu8_content = re.sub(r'/\S+/', '', meu8_content)
     u_file.write_content(process_m3u8_save_path, meu8_content)
 
     # 使用ffmpeg合并ts文件
