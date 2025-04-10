@@ -3,6 +3,7 @@
 """
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+import uiautomation as auto
 
 import u_base.u_file as u_file
 import u_base.u_log as log
@@ -21,12 +22,18 @@ REQUESTS_KWARGS = {
         'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': 'Windows',
-        'sec-fetch-dest': 'empty',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-site'
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
+        'accept-language': 'zh-CN,zh;q=0.9',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'referer': 'https://alicesw.org/other/chapters/id/33927.html',
+        'cookie': 'ASP.NET_SessionId=czffir2fwtp5idxx1l3oicqi; TokenId=5DAC710C1542B94D1DDEE5B0572A38FE9BAB361054EDE17FCBD2A4E49B90917836FE4AAF6ED5B48C2EF0ECC929CADF30'
     },
     'retry': 2,
-    'timeout': (2, 3),   # 设置连接超时时间为2秒，读取超时时间为3秒
+    'timeout': (20, 30),   # 设置连接超时时间为2秒，读取超时时间为3秒
 }
 
 
@@ -69,6 +76,21 @@ CRAWL_CONFIGS = [
                 chapter_title_selector='p.novel_subtitle',
                 chapter_content_selector='div#novel_honbun',
                 next_chapter_url_selector='a.novelview_pager-next'
+                ),
+    CrawlConfig(home_url='https://www.uaa.com/novel/chapter',
+                chapter_title_selector='div.title_box > h2',
+                chapter_content_selector='div.article',
+                next_chapter_url_selector='a.next_chapter'
+                ),
+    CrawlConfig(home_url='https://alicesw.org/',
+                chapter_title_selector='h3.j_chapterName',
+                chapter_content_selector='div.j_readContent',
+                next_chapter_url_selector='a#j_chapterNext'
+                ),
+    CrawlConfig(home_url='https://www.dxmwx.org/',
+                chapter_title_selector='h1#ChapterTitle',
+                chapter_content_selector='div#Lab_Contents',
+                next_chapter_url_selector='div.erzibottom[onclick="JumpNext();"] > a'
                 ),
 ]
 
@@ -191,7 +213,7 @@ def crawl_novel_by_next(begin_chapter_url: str, novel_title: str):
 
         if not html_content:
             log.error('crawl error for url: {}'.format(next_chapter_url))
-            continue
+            break
 
         chapter_soup = BeautifulSoup(html_content, 'lxml')
 
@@ -201,12 +223,12 @@ def crawl_novel_by_next(begin_chapter_url: str, novel_title: str):
             next_chapter_url = patch_url(begin_chapter_url, next_chapter_url_node['href'])
         else:
             log.error('can not extract next url from: {}. finish it.'.format(next_chapter_url))
-            return novel_content
+            break
 
         # 章节标题
         chapter_title_node = chapter_soup.select_one(crawl_config.chapter_title_selector)
         novel_content += '\n\n' + chapter_title_node.text + '\n'
-        log.info('extract next url success: {}'.format(next_chapter_url))
+        log.info('extract title: 【{}】,  next url : {}'.format(chapter_title_node.text, next_chapter_url))
 
         # 章节内容
         chapter_content_node = chapter_soup.select_one(crawl_config.chapter_content_selector)
@@ -218,9 +240,17 @@ def crawl_novel_by_next(begin_chapter_url: str, novel_title: str):
         novel_content += chapter_content
 
         u_file.write_content(novel_save_path, novel_content)
+    u_file.write_content(novel_save_path, novel_content)
     return novel_content
 
 
+def copy_novel_by_click():
+    page_count = 200
+    for page_index in range(1, page_count + 1):
+        auto.Click('//*[@id="page_next"]')
+
+
+
 if __name__ == '__main__':
-    crawl_novel_by_next('https://ncode.syosetu.com/n6316bn/1/', '転生したらスライムだった件')
+    crawl_novel_by_next('https://www.dxmwx.org/read/56349_49385044.html', '《谁让他修仙的！》最白的乌鸦著')
     # crawl_novel_by_next('https://325def1d9a6.12bqg.com/book/152211/1.html', '转生冰山大小姐也不要被她们贴')
