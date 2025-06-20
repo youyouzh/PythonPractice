@@ -302,7 +302,7 @@ def download_file(url, filename, path=os.path.curdir, replace=False, with_progre
         else:
             kwargs['headers']['user-agent'] = COMMON_USER_AGENT
         response = requests.get(url, stream=True, **kwargs)
-        if response.status_code != 200:
+        if response.status_code != 200 and response.status_code != 206:
             logger.error('download file fail. code: {}, url: {}, '.format(response.status_code, url))
             return False
         if with_progress:
