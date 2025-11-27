@@ -43,7 +43,7 @@ def video_control_keyboard_listener(source_window_name: str, video_window_name: 
     manual_send_keys = []
     # 为了避免按键循环触发，key，value的按键最好不一致
     video_key_map = {
-        'space': [auto.Keys.VK_MEDIA_PLAY_PAUSE, auto.Keys.VK_MEDIA_STOP],
+        'space': auto.Keys.VK_SPACE,
         'left': auto.Keys.VK_NUMPAD4,
         'right': auto.Keys.VK_NUMPAD6,
     }
@@ -56,22 +56,31 @@ def video_control_keyboard_listener(source_window_name: str, video_window_name: 
         if event_name not in video_key_map.keys():
             return  # 不关心的按键直接返回
 
+        # 过滤掉手动触发的按键
+        if video_key_map.get(event_name) in manual_send_keys:
+            manual_send_keys.remove(video_key_map.get(event_name))
+            return
+
         # 对于空格键，要判断上一次发送的是播放还是暂停，这次相反
         if event_name == 'space':
-            last_send_key = manual_send_keys[-1] if manual_send_keys else None
-            if last_send_key == auto.Keys.VK_MEDIA_PLAY_PAUSE:
-                send_key = auto.Keys.VK_MEDIA_STOP
-            else:
-                send_key = auto.Keys.VK_MEDIA_PLAY_PAUSE
+            # last_send_key = manual_send_keys[-1] if manual_send_keys else None
+            # if last_send_key == auto.Keys.VK_MEDIA_PLAY_PAUSE:
+            #     send_key = auto.Keys.VK_MEDIA_STOP
+            # else:
+            #     send_key = auto.Keys.VK_MEDIA_PLAY_PAUSE
+            send_key = auto.Keys.VK_SPACE
         else:
             # 从映射表获取对应按键
             send_key = video_key_map.get(event_name)
         print(f'attach key event: {event}, send key: {send_key}')
+        # 限制manual_send_keys大小，避免内存泄漏
+        if len(manual_send_keys) > 10:  # 只保留最近10次记录
+            manual_send_keys.pop(0)
         # 更新最后发送按键记录
         manual_send_keys.append(send_key)
-        video_window_control.SendKey(send_key, waitTime=0.1)
+        video_window_control.SetFocus()
+        auto.SendKey(send_key, waitTime=0.1)
         # 需要回到原窗口
-        time.sleep(0.1)
         source_window_control.SetActive()
 
     register_keyboard_listener(keyboard_event_listener)
