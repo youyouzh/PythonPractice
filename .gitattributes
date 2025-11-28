@@ -1,0 +1,6 @@
+# 所有 .sh 文件保留 LF 换行
+*.sh text eol=lf
+
+# Windows 脚本可以使用 CRLF
+*.bat text eol=crlf
+
