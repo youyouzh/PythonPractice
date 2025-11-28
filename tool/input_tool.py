@@ -32,8 +32,6 @@ def find_window(window_name: str) -> auto.WindowControl | None:
         # 如果不是有效正则表达式，则pattern保持为None
         pass
     for app_control in auto.GetRootControl().GetChildren():
-        if not isinstance(app_control, auto.WindowControl):
-            continue
         if pattern and pattern.search(app_control.Name):
             # 使用正则表达式匹配
             print('find window success: {} (matched by regex: {})'.format(app_control.Name, window_name))
@@ -42,6 +40,7 @@ def find_window(window_name: str) -> auto.WindowControl | None:
             # 使用普通字符串匹配
             print('find window success: {} (matched by name: {})'.format(app_control.Name, window_name))
             return app_control
+    print('not find window: {}'.format(window_name))
     return None
 
 
@@ -81,7 +80,9 @@ def send_key_to_window_with_message(
     result2 = auto.SendMessage(window_control.NativeWindowHandle, 0x101, key_code, 0)  # WM_KEYUP
     print(f"Sent key {key_code} - WM_KEYDOWN result: {result1}, WM_KEYUP result: {result2}")
     # 需要回到原窗口
-    if restore_window_control:
+    if hasattr(restore_window_control, 'SetActive'):
+        restore_window_control.SetActive()
+    else:
         restore_window_control.SetFocus()
 
 
@@ -99,10 +100,11 @@ def video_control_keyboard_listener(
     :param with_message_send_key: 使用send_message来发送按键
     """
     video_window_control = find_window(video_window_name)
-    restore_window_control = find_window(restore_window_name) if restore_window_name else auto.GetForegroundControl()
-    if not video_window_control:
-        print('not find video window.')
+    restore_window_control = find_window(restore_window_name) if restore_window_name else auto.GetFocusedControl()
+    if not video_window_control or not restore_window_control:
+        print('not find window.')
         return
+    print('restore window name: {}'.format(restore_window_control.Name))
 
     # 记录手动发送按键时间，需要进行去重
     manual_send_keys = []
@@ -158,7 +160,7 @@ def register_keyboard_video_control_when_play_game():
     用于一边玩游戏的同时，一边可以用键盘控制攻略视频播放
     注意要用管理员权限启动该脚本，否则无法捕获游戏时的键盘输入
     """
-    video_control_keyboard_listener('Google Chrome', '原神')
+    video_control_keyboard_listener('Google Chrome', '^原神$')
 
 
 def main_loop():
