@@ -1,3 +1,5 @@
+
+
 ## 概述
 
 ### 说明
@@ -13,7 +15,7 @@
 
 ### 使用方式
 
-直接 `git clone https://github.com/youyouzh/PythonPractice.git` 下载代码，安装相应的依赖`pip install requirements`即可运行。
+直接 `git clone https://github.com/youyouzh/PythonPractice.git` 下载代码，安装相应的依赖 `pip install -r requirements.txt` 即可运行。
 
 ### 编码规范
 
